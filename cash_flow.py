@@ -1,6 +1,30 @@
 import streamlit as st
 import pandas as pd
 
+# ---------------------------------------------------------
+# 1. SECURITY GATE: This stops the app unless the key is right
+# ---------------------------------------------------------
+def check_password():
+    if st.session_state.get("password_correct", False):
+        return True
+
+    st.title("🔒 Private Financial Access")
+    pwd = st.text_input("Enter the firm's access key:", type="password")
+    
+    if st.button("Unlock Dashboard"):
+        if pwd == "MyFirm2026":  # <--- CHANGE THIS TO YOUR PASSWORD
+            st.session_state["password_correct"] = True
+            st.rerun()
+        else:
+            st.error("🚫 Incorrect key.")
+    return False
+
+if not check_password():
+    st.stop()  # This prevents the rest of the code from running
+# ---------------------------------------------------------
+# SECURITY END - YOUR ORIGINAL CODE CONTINUES BELOW
+# ---------------------------------------------------------
+
 # 1. Page Configuration
 st.set_page_config(page_title="Runway Engine", layout="wide")
 
