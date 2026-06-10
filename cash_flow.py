@@ -268,17 +268,50 @@ styled_df = df.style.apply(highlight_negatives, axis=1).format({
 
 st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
+# Percentage of Revenue Calculations (Safe Guard against Division by Zero)
+if total_annual_revenue > 0:
+    pct_pat = (total_pat_tax / total_annual_revenue) * 100
+    pct_tds = (total_annual_director_tds / total_annual_revenue) * 100
+    pct_surplus = (current_balance / total_annual_revenue) * 100
+    
+    delta_pat = f"{pct_pat:.2f}% of Revenue"
+    delta_tds = f"{pct_tds:.2f}% of Revenue"
+    delta_surplus = f"{pct_surplus:.2f}% of Revenue"
+else:
+    delta_pat = "0.00% of Revenue"
+    delta_tds = "0.00% of Revenue"
+    delta_surplus = "0.00% of Revenue"
+
 col_res1, col_res2, col_res3, col_res4 = st.columns(4)
+
 with col_res1:
-    st.metric(label="Total Modeled Annual Revenue", value=f"₹{format_indian_currency(total_annual_revenue)}")
+    st.metric(
+        label="Total Modeled Annual Revenue", 
+        value=f"₹{format_indian_currency(total_annual_revenue)}"
+    )
+
 with col_res2:
-    st.metric(label="Total Annual PAT Tax Settled", value=f"₹{format_indian_currency(total_pat_tax)}")
+    st.metric(
+        label="Total Annual PAT Tax Settled", 
+        value=f"₹{format_indian_currency(total_pat_tax)}",
+        delta=delta_pat,
+        delta_color="off"
+    )
+
 with col_res3:
-    st.metric(label="Total Annual Director TDS", value=f"₹{format_indian_currency(total_annual_director_tds)}")
+    st.metric(
+        label="Total Annual Director TDS", 
+        value=f"₹{format_indian_currency(total_annual_director_tds)}",
+        delta=delta_tds,
+        delta_color="off"
+    )
+
 with col_res4:
+    # Keeps the red error color context if the business drops into deficit
+    warning_label = delta_surplus if current_balance >= 0 else f"{delta_surplus} | DEFICIT WARNING"
     st.metric(
         label="March 31 Fiscal Surplus", 
         value=f"₹{format_indian_currency(current_balance)}",
-        delta=None if current_balance >= 0 else "DEFICIT WARNING",
-        delta_color="inverse"
+        delta=warning_label,
+        delta_color="off" if current_balance >= 0 else "inverse"
     )
