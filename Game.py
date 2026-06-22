@@ -1,69 +1,121 @@
+import streamlit as st
 import random
-import time
 
-# Define the board mechanics
+# ==========================================
+# BOARD CONFIGURATION
+# ==========================================
 LADDERS = {3: 22, 5: 8, 11: 26, 20: 29}
 SNAKES = {17: 4, 19: 7, 21: 9, 27: 1}
 WINNING_SQUARE = 30
 
-def roll_dice():
-    return random.randint(1, 6)
+st.set_page_config(page_title="Ecosystem Runaway Game", page_icon="🎲", layout="centered")
 
-def move_player(player_name, current_position):
-    print(f"\n🎲 {player_name}'s turn! Press Enter to roll the dice...")
-    input()  # Waits for user input if it's the player, or just an enter hit
-    
-    roll = roll_dice()
-    print(f"🎲 {player_name} rolled a {roll}!")
-    
-    if current_position + roll > WINNING_SQUARE:
-        print(f"⚠️ Over-shoot! {player_name} needs exactly {WINNING_SQUARE - current_position} to win. Staying at square {current_position}.")
-        return current_position
-        
-    new_position = current_position + roll
-    print(f"➡️ {player_name} moves to square {new_position}.")
-    
-    # Check for Ladders
-    if new_position in LADDERS:
-        up_to = LADDERS[new_position]
-        print(f"🚀 BONUS SHIELD! {player_name} found a ladder! Climbing from {new_position} up to {up_to}!")
-        new_position = up_to
-        
-    # Check for Snakes
-    elif new_position in SNAKES:
-        down_to = SNAKES[new_position]
-        print(f"🐍 TAX TRAP! {player_name} stepped on a snake! Sliding down from {new_position} to {down_to}!")
-        new_position = down_to
-        
-    return new_position
+st.title("🎲 The Mini Ecosystem Runaway Game")
+st.write("First to square 30 wins. Use the shortcuts, avoid the tax traps!")
+st.write("---")
 
-def main():
-    print("=============================================")
-    print(" 🎲 WELCOME TO THE MINI ECOSYSTEM RUNAWAY GAME 🎲")
-    print("   First to square 30 wins. Avoid the traps! ")
-    print("=============================================")
-    
-    player_pos = 0
-    ai_pos = 0
-    
-    while player_pos < WINNING_SQUARE and ai_pos < WINNING_SQUARE:
-        # Player Turn
-        player_pos = move_player("Suraj (You)", player_pos)
-        print(f"📊 Current Standing -> You: {player_pos} | Tax Collector: {ai_pos}")
-        if player_pos == WINNING_SQUARE:
-            print("\n🏆 CONGRATULATIONS! You successfully navigated the board and won!")
-            break
-            
-        time.sleep(0.5)
+# Initialize game states if they don't exist
+if 'player_pos' not in st.session_state:
+    st.session_state.player_pos = 0
+if 'ai_pos' not in st.session_state:
+    st.session_state.ai_pos = 0
+if 'game_log' not in st.session_state:
+    st.session_state.game_log = ["Game started! Good luck."]
+if 'game_over' not in st.session_state:
+    st.session_state.game_over = False
+
+def reset_game():
+    st.session_state.player_pos = 0
+    st.session_state.ai_pos = 0
+    st.session_state.game_log = ["Game restarted! Fresh board."]
+    st.session_state.game_over = False
+
+# ==========================================
+# VISUAL SCOREBOARD
+# ==========================================
+col1, col2 = st.columns(2)
+with col1:
+    st.metric(label="👤 Your Position", value=f"Square {st.session_state.player_pos}")
+with col2:
+    st.metric(label="🤖 Tax Collector Position", value=f"Square {st.session_state.ai_pos}")
+
+# Progress bars to visually show progress toward square 30
+st.progress(min(st.session_state.player_pos / WINNING_SQUARE, 1.0), text="Your Progress")
+st.progress(min(st.session_state.ai_pos / WINNING_SQUARE, 1.0), text="Tax Collector Progress")
+
+st.write("---")
+
+# ==========================================
+# GAME LOGIC TRIGGER
+# ==========================================
+if not st.session_state.game_over:
+    if st.button("🎲 Roll Dice", type="primary", use_container_width=True):
+        new_logs = []
         
-        # AI Turn
-        print("\n🤖 Tax Collector is rolling...")
-        time.sleep(1)
-        ai_pos = move_player("Tax Collector (AI)", ai_pos)
-        print(f"📊 Current Standing -> You: {player_pos} | Tax Collector: {ai_pos}")
-        if ai_pos == WINNING_SQUARE:
-            print("\n📉 OH NO! The Tax Collector beat you to the finish line. Game Over!")
-            break
+        # --- PLAYER TURN ---
+        p_roll = random.randint(1, 6)
+        if st.session_state.player_pos + p_roll > WINNING_SQUARE:
+            new_logs.append(f"👤 You rolled a {p_roll} but overshot! Staying at {st.session_state.player_pos}.")
+        else:
+            st.session_state.player_pos += p_roll
+            new_logs.append(f"👤 You rolled a {p_roll} and moved to {st.session_state.player_pos}.")
             
-if __name__ == "__main__":
-    main()
+            # Check shortcuts/traps
+            if st.session_state.player_pos in LADDERS:
+                old = st.session_state.player_pos
+                st.session_state.player_pos = LADDERS[old]
+                new_logs.append(f"🚀 BONUS SHIELD! Climbed ladder from {old} to {st.session_state.player_pos}!")
+            elif st.session_state.player_pos in SNAKES:
+                old = st.session_state.player_pos
+                st.session_state.player_pos = SNAKES[old]
+                new_logs.append(f"🐍 TAX TRAP! Slid down snake from {old} to {st.session_state.player_pos}!")
+
+        # Check Player Win
+        if st.session_state.player_pos == WINNING_SQUARE:
+            st.session_state.game_over = True
+            new_logs.append("🏆 CONGRATULATIONS! You beat the Tax Collector!")
+            
+        # --- AI TURN (Only if player didn't win yet) ---
+        if not st.session_state.game_over:
+            ai_roll = random.randint(1, 6)
+            if st.session_state.ai_pos + ai_roll > WINNING_SQUARE:
+                new_logs.append(f"🤖 Tax Collector rolled a {ai_roll} but overshot.")
+            else:
+                st.session_state.ai_pos += ai_roll
+                new_logs.append(f"🤖 Tax Collector rolled a {ai_roll} and moved to {st.session_state.ai_pos}.")
+                
+                if st.session_state.ai_pos in LADDERS:
+                    old = st.session_state.ai_pos
+                    st.session_state.ai_pos = LADDERS[old]
+                    new_logs.append(f"🤖 Tax Collector found a ladder to {st.session_state.ai_pos}!")
+                elif st.session_state.ai_pos in SNAKES:
+                    old = st.session_state.ai_pos
+                    st.session_state.ai_pos = SNAKES[old]
+                    new_logs.append(f"🤖 Tax Collector hit a trap and fell to {st.session_state.ai_pos}!")
+
+            # Check AI Win
+            if st.session_state.ai_pos == WINNING_SQUARE:
+                st.session_state.game_over = True
+                new_logs.append("📉 GAME OVER! The Tax Collector reached square 30 first.")
+
+        # Save logs
+        st.session_state.game_log = new_logs + st.session_state.game_log
+        st.rerun()
+
+else:
+    st.subheader("🎉 Game Over!")
+    if st.button("🔄 Play Again", use_container_width=True):
+        reset_game()
+        st.rerun()
+
+# ==========================================
+# LIVE MATCH FEED
+# ==========================================
+st.write("### 📋 Live Match Feed")
+for log in st.session_state.game_log:
+    if "🏆" in log or "🚀" in log:
+        st.success(log)
+    elif "📉" in log or "🐍" in log:
+        st.error(log)
+    else:
+        st.info(log)
