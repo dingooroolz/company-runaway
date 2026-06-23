@@ -143,6 +143,7 @@ for idx, m_name in enumerate(FY_MONTHS):
     elif idx == current_month_idx:
         status = "Present (Active)"
         revenue = float(current_active_revenue)
+        net_sal = float(current_net_target)
         gross_sal = float(current_gross_salary)
         tds_val = float(current_monthly_tds)
         overhead = float(current_active_overhead)
@@ -156,8 +157,8 @@ for idx, m_name in enumerate(FY_MONTHS):
         else:
             st.sidebar.markdown(f"**{m_name}**")
             revenue = st.sidebar.number_input(f"Projected Revenue ({m_name}):", min_value=0, value=int(current_active_revenue), step=25000, key=f"loop_rev_{m_name}")
-            fut_net = st.sidebar.number_input(f"Projected Net Take-Home ({m_name}):", min_value=0, value=int(current_net_target), step=10000, key=f"loop_net_sal_{m_name}")
-            gross_sal, tds_val = calculate_gross_salary_and_tds(fut_net)
+            net_sal = st.sidebar.number_input(f"Projected Net Take-Home ({m_name}):", min_value=0, value=int(current_net_target), step=10000, key=f"loop_net_sal_{m_name}")
+            gross_sal, tds_val = calculate_gross_salary_and_tds(net_sal)
             overhead = st.sidebar.number_input(f"Projected Overhead ({m_name}):", min_value=0, value=int(current_active_overhead), step=5000, key=f"loop_oh_{m_name}")
         
     # --- Standard Track Calculations ---
@@ -165,13 +166,15 @@ for idx, m_name in enumerate(FY_MONTHS):
     standard_corp_tax = float(standard_net_profit * 0.25)
     
     # --- PARALLEL OVERHEAD SURPLUS SIMULATION MATH ---
-    sim_available_surplus = standard_net_profit 
-    sim_total_gross_salary = gross_sal + sim_available_surplus
+    # The surplus gross cash available inside the company before corporate tax
+    gross_surplus = standard_net_profit 
     
-    sim_net_annual_est = max(0.0, (sim_total_gross_salary * 12.0) * 0.70)
-    _, sim_combined_monthly_tds = calculate_gross_salary_and_tds(sim_net_annual_est / 12.0)
+    # Personal tax slab impact on the extra surplus chunk (~31.2% effective highest slab)
+    surplus_tds = float(gross_surplus * 0.312) if gross_surplus > 0 else 0.0
+    net_surplus_payout = max(0.0, gross_surplus - surplus_tds)
     
-    sim_corp_tax = 0.0
+    # Grand final combined take-home hitting personal account (Base Net Salary + Net Surplus Portion)
+    total_net_personal_takehome = float(net_sal + net_surplus_payout)
     
     final_monthly_records.append({
         "Month": m_name,
@@ -179,12 +182,15 @@ for idx, m_name in enumerate(FY_MONTHS):
         "Gross Revenue": float(revenue),
         "Company Salary Expense (Gross)": float(gross_sal),
         "Salary TDS (To Remit)": float(tds_val),
+        "Net Take-Home Salary": float(net_sal),
         "Projected Overhead": float(overhead),
         "Net Corporate Profit": float(standard_net_profit),
         "Corporate Tax Liability": float(standard_corp_tax),
-        "Simulated Total Gross Salary": float(sim_total_gross_salary),
-        "Simulated Extra Salary TDS": float(sim_combined_monthly_tds - tds_val if sim_combined_monthly_tds > tds_val else 0.0),
-        "Simulated Corporate Tax": float(sim_corp_tax)
+        # Personal Account Split Tracking Fields
+        "Gross Surplus": float(gross_surplus),
+        "Surplus TDS": float(surplus_tds),
+        "Net Surplus (After Tax)": float(net_surplus_payout),
+        "Total Tax-Free Personal Cash Flow": float(total_net_personal_takehome)
     })
 
 df_engine = pd.DataFrame(final_monthly_records)
@@ -196,23 +202,32 @@ calculated_bank_balance = float(current_active_revenue - current_gross_salary - 
 current_month_tax_liability = float(df_engine.loc[current_month_idx, "Corporate Tax Liability"])
 freely_withdrawable_cash = float(calculated_bank_balance - current_month_tax_liability)
 
+# Extract live personal take-home numbers for the current month
+current_month_personal_cash = float(df_engine.loc[current_month_idx, "Total Tax-Free Personal Cash Flow"])
+
 # ==========================================
 # 6. VISUAL METRICS DISPLAY
 # ==========================================
-st.subheader("🏁 Safe Withdrawal Matrix")
+col_w1, col_w2 = st.columns(2)
 
-if freely_withdrawable_cash >= 0:
-    st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
-else:
-    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
+with col_w1:
+    st.subheader("🏁 Safe Withdrawal Matrix")
+    if freely_withdrawable_cash >= 0:
+        st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
+    else:
+        st.error(f"### Shortfall Warning! Negative Liquidity: **₹{freely_withdrawable_cash:,.2f}**")
 
-# RESTORED: Detailed breakdown analysis component
+with col_w2:
+    st.subheader("👤 Live Personal Wallet Sync")
+    st.info(f"### Current Month Tax-Free Cash: **₹{current_month_personal_cash:,.2f}**")
+
+# Detailed breakdown analysis component
 with st.expander("🔍 Operational Breakdown"):
     st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** ₹{current_active_revenue:,.2f}")
     st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of ₹{current_net_target:,.2f} + Company TDS reservation of ₹{current_monthly_tds:,.2f} = Total Gross Expense of **-₹{current_gross_salary:,.2f}**")
     st.write(f"🛠️ *Step 3. Deduct Overhead Expenses:* -₹{current_active_overhead:,.2f}")
     st.write(f"➡️ **Calculated Bank Balance (Liquid Leftover):** **₹{calculated_bank_balance:,.2f}**")
-    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of ₹{df_engine.loc[current_month_idx, 'Net Corporate Profit']:,.2f} profit):* -₹{current_month_tax_liability:,.2f}")
+    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of profit):* -₹{current_month_tax_liability:,.2f}")
     st.write("---")
     st.write(f"🏁 **Net Discovered Spendable Capital (Freely Withdrawable Cash):** **₹{freely_withdrawable_cash:,.2f}**")
 
@@ -236,9 +251,11 @@ col_m2.metric(label="Projected Remaining Inflows", value=f"₹{only_remaining_fu
 col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
 
-total_sim_extra_tds = float(df_engine["Simulated Extra Salary TDS"].sum())
+# Track B: Parallel Zero-Tax Simulation Totals
+grand_annual_tax_free_personal_cash = float(df_engine["Total Tax-Free Personal Cash Flow"].sum())
 total_base_tds = float(df_engine["Salary TDS (To Remit)"].sum())
-grand_total_personal_tds_remittance = total_base_tds + total_sim_extra_tds
+total_surplus_tds = float(df_engine["Surplus TDS"].sum())
+grand_total_personal_tds_remittance = total_base_tds + total_surplus_tds
 
 st.write("---")
 st.markdown("#### ⚡ Parallel Scenario Strategy: *Zero-Tax Salary Surplus Optimization*")
@@ -246,15 +263,41 @@ st.caption("This model simulates sweeping 100% of residual company cash out as a
 
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta="-100% Tax Drop", delta_color="inverse")
-col_s2.metric(label="Additional Personal TDS Triggered", value=f"₹{total_sim_extra_tds:,.2f}", delta="Outflow Increase", delta_color="off")
-col_s3.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}")
+col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}", delta="Remitted via Paychex", delta_color="off")
+col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}", help="Total combined net salary + net surplus cleared directly into your personal savings account across the 12-month sequence.")
 col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="Fully Extracted", delta_color="normal")
 
 st.write("---")
-st.write("### 📋 Comparative 12-Month Financial Spread Matrix")
 
-preview_df = df_engine[[
-    "Month", "Status", "Gross Revenue", "Company Salary Expense (Gross)", "Projected Overhead",
-    "Corporate Tax Liability", "Simulated Total Gross Salary", "Simulated Extra Salary TDS", "Simulated Corporate Tax"
-]]
-st.dataframe(preview_df, use_container_width=True)
+# ==========================================
+# 8. SPREADSHEET MATRIX VIEW TABS
+# ==========================================
+st.write("### 📋 12-Month Financial Spread Matrix Split-Ledgers")
+
+tab_corp, tab_personal = st.tabs(["🏢 Company Perspective View", "👤 Personal Director Account View"])
+
+with tab_corp:
+    st.markdown("##### Corporate Inflows, Deductions, and Tax Liability Allocations")
+    preview_df = df_engine[[
+        "Month", "Status", "Gross Revenue", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Projected Overhead",
+        "Net Corporate Profit", "Corporate Tax Liability"
+    ]]
+    st.dataframe(preview_df, use_container_width=True)
+
+with tab_personal:
+    st.markdown("##### 100% Tax-Free Cash-Flow Inflow Ledger hitting your Personal Account")
+    personal_df = df_engine[[
+        "Month", "Gross Verification Status" if False else "Status",
+        "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Net Take-Home Salary",
+        "Gross Surplus", "Surplus TDS", "Net Surplus (After Tax)", "Total Tax-Free Personal Cash Flow"
+    ]]
+    
+    # Rename for pinpoint readability matching user's exact specification list
+    personal_df = personal_df.rename(columns={
+        "Company Salary Expense (Gross)": "Gross Salary",
+        "Salary TDS (To Remit)": "TDS on Gross Salary",
+        "Net Take-Home Salary": "Base Salary (After TDS)",
+        "Net Surplus (After Tax)": "Surplus (After TDS)",
+        "Total Tax-Free Personal Cash Flow": "Net Take-Home (Salary + Surplus)"
+    })
+    st.dataframe(personal_df, use_container_width=True)
