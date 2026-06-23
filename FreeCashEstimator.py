@@ -35,7 +35,7 @@ current_month_idx = FY_MONTHS.index(current_month)
 # --- SIDEBAR SECTION 1: PAST MONTHS ACTUALS ---
 st.sidebar.write("---")
 st.sidebar.subheader("📜 Past Months (Historical Actuals)")
-st.sidebar.caption("Input your true actual revenues for already closed months (Changes EOY metrics only):")
+st.sidebar.caption("Input your true actual revenues for already closed months:")
 
 past_revenues = {}
 for idx in range(current_month_idx):
@@ -80,17 +80,14 @@ final_monthly_records = []
 
 for idx, m_name in enumerate(FY_MONTHS):
     if idx < current_month_idx:
-        # PAST MONTHS: Revenue comes from your manual history inputs; overhead uses standard baseline
         status = "Past (Closed)"
         revenue = past_revenues[m_name]
         overhead = BASELINE_OH
     elif idx == current_month_idx:
-        # CURRENT MONTH: Driven dynamically by your primary present-day inputs
         status = "Present (Active)"
         revenue = current_active_revenue
         overhead = current_changeable_overhead
     else:
-        # FUTURE MONTHS: Individually editable inputs in the sidebar
         st.sidebar.markdown(f"**{m_name}**")
         revenue = st.sidebar.number_input(
             f"Projected Revenue ({m_name}):",
@@ -104,7 +101,7 @@ for idx, m_name in enumerate(FY_MONTHS):
             min_value=0,
             value=int(current_changeable_overhead),
             step=5000,
-            key=f"oh_{m_name}"
+            key=f"oh_{month_name}"
         )
         status = "Future (Projected)"
         
@@ -152,11 +149,9 @@ with col_input3:
 
 st.write("---")
 
-# Core Present-Day Liquidity Math
 current_month_overhead_commitment = df_engine.loc[current_month_idx, "Overhead"]
 current_month_tax_liability = df_engine.loc[current_month_idx, "Tax Liability"]
 
-# Ultimate Authorization Equation
 freely_withdrawable_cash = bank_balance - current_month_overhead_commitment - current_month_tax_liability
 
 # ==========================================
@@ -183,19 +178,24 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
+# Calculate isolated historical total actual revenue
+total_actual_revenue_to_date = df_engine[df_engine["Status"] == "Past (Closed)"]["Revenue"].sum()
+
 eoy_revenue = df_engine["Revenue"].sum()
 eoy_calculated_tax = df_engine["Tax Liability"].sum()
 eoy_tds = df_engine["TDS"].sum()
 net_final_tax_payout_due = max(0, eoy_calculated_tax - tax_paid_so_far)
 
-col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
 with col_m1:
-    st.metric(label="Total Projected Revenue", value=f"₹{eoy_revenue:,.2f}")
+    st.metric(label="Total Actual Revenue (To Date)", value=f"₹{total_actual_revenue_to_date:,.2f}")
 with col_m2:
-    st.metric(label="Est. Corporate Tax (Total Yr)", value=f"₹{eoy_calculated_tax:,.2f}")
+    st.metric(label="Total Projected Revenue (Full Yr)", value=f"₹{eoy_revenue:,.2f}")
 with col_m3:
-    st.metric(label="Estimated TDS Accrued", value=f"₹{eoy_tds:,.2f}")
+    st.metric(label="Est. Corporate Tax (Total Yr)", value=f"₹{eoy_calculated_tax:,.2f}")
 with col_m4:
+    st.metric(label="Estimated TDS Accrued", value=f"₹{eoy_tds:,.2f}")
+with col_m5:
     st.metric(label="Net EOY Balance Due to Gov", value=f"₹{net_final_tax_payout_due:,.2f}", delta=f"-₹{tax_paid_so_far} Paid", delta_color="inverse")
 
 st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
