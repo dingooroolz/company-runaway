@@ -277,13 +277,14 @@ with tab_corp:
 with tab_personal:
     st.markdown("##### 100% Tax-Free Cash-Flow Inflow Ledger hitting your Personal Account")
     
-    # 1. Isolate and rename columns as specified
+    # Isolate base columns
     personal_df = df_engine[[
         "Month", "Status", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", 
         "Net Take-Home Salary", "Gross Surplus", "Surplus TDS", "Net Surplus (After Tax)", 
         "Total Tax-Free Personal Cash Flow"
     ]].copy()
     
+    # Rename matching specs
     personal_df = personal_df.rename(columns={
         "Company Salary Expense (Gross)": "Gross Salary",
         "Salary TDS (To Remit)": "TDS on Gross Salary",
@@ -292,5 +293,16 @@ with tab_personal:
         "Total Tax-Free Personal Cash Flow": "Net Take-Home (Salary + Surplus)"
     })
     
-    # 2. Compute full sums for numeric columns to forge a custom summary row
-    numeric_cols
+    # Safe isolation list of columns to total up
+    target_cols = ["Gross Salary", "TDS on Gross Salary", "Base Salary (After TDS)", "Gross Surplus", "Surplus TDS", "Surplus (After TDS)", "Net Take-Home (Salary + Surplus)"]
+    
+    # Explicitly compile sums as floats to prevent concatenation object alignment issues
+    totals_row = {col: float(personal_df[col].sum()) for col in target_cols}
+    totals_row["Month"] = "📈 TOTALS"
+    totals_row["Status"] = "Full Financial Year Summary"
+    
+    # Bind cleanly inside a dummy frame and append
+    df_summary_row = pd.DataFrame([totals_row])
+    personal_df_with_total = pd.concat([personal_df, df_summary_row], ignore_index=True)
+    
+    st.dataframe(personal_df_with_total, use_container_width=True)
