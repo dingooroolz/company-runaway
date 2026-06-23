@@ -7,7 +7,7 @@ import pandas as pd
 st.set_page_config(page_title="True Free Cash Engine", page_icon="💰", layout="wide")
 
 st.title("💼 True Free Cash & EOY Tax Forecasting Engine")
-st.write("Strip away business overhead and accrued/predicted tax liabilities to see exactly what you can withdraw right now.")
+st.write("Strip away business overhead and accurate tax liabilities to see exactly what you can withdraw right now.")
 st.write("---")
 
 # Define the Indian Financial Year sequence (April to March)
@@ -17,13 +17,12 @@ FY_MONTHS = [
 ]
 
 # ==========================================
-# 2. SIMULATED HISTORICAL DATA (DATABASE)
+# 2. BASELINE DATA CONFIGURATION
 # ==========================================
-# In a real setup, this data matches your historical actuals.
-# We assume a baseline revenue of ₹5,00,000 and baseline overhead of ₹1,50,000 per month.
+# Setting up standard default revenue and overhead frameworks
 baseline_data = {
     "Month": FY_MONTHS,
-    "Actual_Revenue": [500000] * 12,
+    "Estimated_Revenue": [500000] * 12,
     "Fixed_Overhead": [150000] * 12,
 }
 df_base = pd.DataFrame(baseline_data)
@@ -33,65 +32,61 @@ df_base = pd.DataFrame(baseline_data)
 # ==========================================
 st.sidebar.header("🛠️ Engine Controls")
 
-# Control 1: Choose the active simulation month
+# Control 1: Choose the starting configuration month
 current_month = st.sidebar.selectbox(
-    "Select the Current Month:", 
+    "Select the Current Active Month:", 
     options=FY_MONTHS, 
     index=2 # Defaults to June
 )
 current_month_idx = FY_MONTHS.index(current_month)
 
 st.sidebar.write("---")
-st.sidebar.subheader("🔮 Future Monthly Overhead Adjustments")
-st.sidebar.caption("Tweak overhead constraints for individual remaining months:")
+st.sidebar.subheader("🔮 Variable Overhead Inputs")
+st.sidebar.caption("Tweak operational constraints for your active month and remaining future cycles:")
 
-# Track custom overhead inputs for each month
-custom_overheads = {}
-
-# ==========================================
-# 4. CORE ENGINE LOGIC & CALCULATIONS
-# ==========================================
-# We loop through the fiscal year to separate Past, Present, and Future data arrays
-final_monthly_records = []
-
-# First, capture the user input for the CURRENT month's changeable overhead
+# Capture the user input for the CURRENT month's changeable overhead
 st.sidebar.markdown(f"**Current Month ({current_month})**")
 current_changeable_overhead = st.sidebar.number_input(
-    f"Overhead for {current_month}:",
+    f"Active Overhead for {current_month}:",
     min_value=0,
     value=int(df_base.loc[current_month_idx, "Fixed_Overhead"]),
     step=5000,
     key="current_oh"
 )
 
-# Build the 12-month matrix dynamically based on selections
+# ==========================================
+# 4. CORE ENGINE LOGIC & CALCULATIONS
+# ==========================================
+final_monthly_records = []
+
+# Build the dynamic 12-month fiscal spreadsheet model
 for idx, row in df_base.iterrows():
     month_name = row["Month"]
-    revenue = row["Actual_Revenue"]
+    revenue = row["Estimated_Revenue"]
     
     if idx < current_month_idx:
-        # PAST MONTHS: Locked history
+        # PAST MONTHS: Closed History
         status = "Past (Closed)"
         overhead = row["Fixed_Overhead"]
     elif idx == current_month_idx:
-        # CURRENT MONTH: Driven by our main changeable variable
+        # CURRENT MONTH: Driven dynamically by our primary lever variable
         status = "Present (Active)"
         overhead = current_changeable_overhead
     else:
-        # FUTURE MONTHS: Default to current month's variable, but editable individually
+        # FUTURE MONTHS: Auto-populated by current month's variable, but editable individually
         status = "Future (Projected)"
         overhead = st.sidebar.number_input(
             f"Projected Overhead ({month_name}):",
             min_value=0,
-            value=int(current_changeable_overhead), # Pre-populates with current month's choice
+            value=int(current_changeable_overhead),
             step=5000,
             key=f"oh_{month_name}"
         )
         
     net_profit = max(0, revenue - overhead)
-    # Approximate Tax liability calculation (e.g., flat 25% corporate tax rate threshold)
+    # Estimated Corporate Tax (Assumed flat baseline rate of 25% on business profit margins)
     calculated_tax = net_profit * 0.25
-    # Approximate TDS calculation (e.g., standard 10% on corporate revenue sourcing)
+    # Estimated TDS tracking (Assumed standard 10% source deduction on inbound gross revenue streams)
     calculated_tds = revenue * 0.10
     
     final_monthly_records.append({
@@ -107,46 +102,57 @@ for idx, row in df_base.iterrows():
 df_engine = pd.DataFrame(final_monthly_records)
 
 # ==========================================
-# 5. MAIN WINDOW DISPLAY & DASHBOARD INPUTS
+# 5. LIQUIDITY INPUTS & WATERFALL MATH
 # ==========================================
-col_input1, col_input2 = st.columns(2)
+col_input1, col_input2, col_input3 = st.columns(3)
+
 with col_input1:
     bank_balance = st.number_input(
-        "💵 Enter Your Current Bank Balance (₹):", 
+        "💵 Current Bank Balance (₹):", 
         min_value=0, 
         value=1000000, 
-        step=10000
+        step=25000
     )
+
 with col_input2:
-    st.info(f"**Timeline Status:** Months before **{current_month}** are treated as finalized past quarters. Remaining months are auto-calculated extensions.")
+    tax_paid_so_far = st.number_input(
+        "🏛️ Actual Tax Settled Up to Date (₹):",
+        min_value=0,
+        value=0,
+        step=5000,
+        help="Input your real-world historical settlements (Advance Tax, TDS credits used, or Q1 payouts)."
+    )
+
+with col_input3:
+    st.caption("ℹ️ **Engine Rule Framework**")
+    st.info(f"The engine assumes you have settled all taxes prior to **{current_month}** via the input amount. It will now isolate and reserve fresh taxes generated by **{current_month}**.")
 
 st.write("---")
 
-# Compute Present-Day True Cash Liquidity Blocks
-past_and_present_df = df_engine.iloc[:current_month_idx + 1]
-total_accrued_tax_liabilities = past_and_present_df["Tax Liability"].sum()
+# Core Liquidity Math execution
 current_month_overhead_commitment = df_engine.loc[current_month_idx, "Overhead"]
+current_month_tax_liability = df_engine.loc[current_month_idx, "Tax Liability"]
 
-# Ultimate Equation Execution
-freely_withdrawable_cash = bank_balance - current_month_overhead_commitment - total_accrued_tax_liabilities
+# Ultimate Authorization Equation: Balance minus current commitments and dynamic month tax
+freely_withdrawable_cash = bank_balance - current_month_overhead_commitment - current_month_tax_liability
 
 # ==========================================
 # 6. VISUAL METRICS DISPLAY
 # ==========================================
-st.subheader("💰 Real-Time Wallet Authorization")
+st.subheader("🏁 Safe Withdrawal Matrix")
 
 if freely_withdrawable_cash >= 0:
     st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
 else:
-    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}** (Reserve Capital Needed)")
+    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}** (Operational Capital Injection Required)")
 
-# Explanatory Waterfall Breakdown
-with st.expander("🔍 See Exactly How Your Balance Is Carved Up"):
-    st.write(f"**Starting Bank Balance:** ₹{bank_balance:,.2f}")
-    st.write(f"⚠️ *Minus* Current Month Business Overhead Reserve ({current_month}): -₹{current_month_overhead_commitment:,.2f}")
-    st.write(f"⚠️ *Minus* Accrued Tax Ledger (All historical months up to and including {current_month}): -₹{total_accrued_tax_liabilities:,.2f}")
+# Explanatory breakdown expander
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
+    st.write(f"⚠️ *Minus* Active Monthly Overhead Budget Allocation ({current_month}): -₹{current_month_overhead_commitment:,.2f}")
+    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month Revenue: -₹{current_month_tax_liability:,.2f}")
     st.write("---")
-    st.write(f"**Final Liquid Free Capital Balance:** ₹{freely_withdrawable_cash:,.2f}")
+    st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
 
 st.write("---")
 
@@ -156,20 +162,23 @@ st.write("---")
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
 eoy_revenue = df_engine["Revenue"].sum()
-eoy_tax = df_engine["Tax Liability"].sum()
+eoy_overhead = df_engine["Overhead"].sum()
+eoy_calculated_tax = df_engine["Tax Liability"].sum()
 eoy_tds = df_engine["TDS"].sum()
-eoy_corporate_tax_est = max(0, (eoy_revenue - df_engine["Overhead"].sum()) * 0.25)
+
+# Adjust corporate calculations to account for real-world tax payments entered
+net_final_tax_payout_due = max(0, eoy_calculated_tax - tax_paid_so_far)
 
 col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 with col_m1:
     st.metric(label="Total Projected Revenue", value=f"₹{eoy_revenue:,.2f}")
 with col_m2:
-    st.metric(label="Est. Corporate Tax Owed", value=f"₹{eoy_corporate_tax_est:,.2f}")
+    st.metric(label="Est. Corporate Tax (Total Yr)", value=f"₹{eoy_calculated_tax:,.2f}")
 with col_m3:
     st.metric(label="Estimated TDS Accrued", value=f"₹{eoy_tds:,.2f}")
 with col_m4:
-    st.metric(label="Net Final Tax Liability Check", value=f"₹{eoy_tax:,.2f}")
+    st.metric(label="Net EOY Balance Due to Gov", value=f"₹{net_final_tax_payout_due:,.2f}", delta=f"-₹{tax_paid_so_far} Paid", delta_color="inverse")
 
-# Render complete monthly data matrix data block
-st.write("### 📋 Underlying 12-Month Fiscal Spreadsheet Matrix")
+# Render underlying operational database grid
+st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
 st.dataframe(df_engine, use_container_width=True)
