@@ -165,16 +165,12 @@ for idx, m_name in enumerate(FY_MONTHS):
     standard_corp_tax = float(standard_net_profit * 0.25)
     
     # --- PARALLEL OVERHEAD SURPLUS SIMULATION MATH ---
-    # Max additional gross salary that can be cleared before hit by tax limits
     sim_available_surplus = standard_net_profit 
     sim_total_gross_salary = gross_sal + sim_available_surplus
     
-    # Re-calculate what personal TDS looks like on the combined larger salary package
-    # Mid-calculation check: find out what net take-home is created by this massive gross limit
-    sim_net_annual_est = max(0.0, (sim_total_gross_salary * 12.0) * 0.70) # Safe floor estimate for simulation mapping
+    sim_net_annual_est = max(0.0, (sim_total_gross_salary * 12.0) * 0.70)
     _, sim_combined_monthly_tds = calculate_gross_salary_and_tds(sim_net_annual_est / 12.0)
     
-    # If we flush all profit out as salary, company profit becomes zero, thus corporate tax drops to zero
     sim_corp_tax = 0.0
     
     final_monthly_records.append({
@@ -186,7 +182,6 @@ for idx, m_name in enumerate(FY_MONTHS):
         "Projected Overhead": float(overhead),
         "Net Corporate Profit": float(standard_net_profit),
         "Corporate Tax Liability": float(standard_corp_tax),
-        # Simulation Columns
         "Simulated Total Gross Salary": float(sim_total_gross_salary),
         "Simulated Extra Salary TDS": float(sim_combined_monthly_tds - tds_val if sim_combined_monthly_tds > tds_val else 0.0),
         "Simulated Corporate Tax": float(sim_corp_tax)
@@ -211,6 +206,16 @@ if freely_withdrawable_cash >= 0:
 else:
     st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
 
+# RESTORED: Detailed breakdown analysis component
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** ₹{current_active_revenue:,.2f}")
+    st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of ₹{current_net_target:,.2f} + Company TDS reservation of ₹{current_monthly_tds:,.2f} = Total Gross Expense of **-₹{current_gross_salary:,.2f}**")
+    st.write(f"🛠️ *Step 3. Deduct Overhead Expenses:* -₹{current_active_overhead:,.2f}")
+    st.write(f"➡️ **Calculated Bank Balance (Liquid Leftover):** **₹{calculated_bank_balance:,.2f}**")
+    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of ₹{df_engine.loc[current_month_idx, 'Net Corporate Profit']:,.2f} profit):* -₹{current_month_tax_liability:,.2f}")
+    st.write("---")
+    st.write(f"🏁 **Net Discovered Spendable Capital (Freely Withdrawable Cash):** **₹{freely_withdrawable_cash:,.2f}**")
+
 st.write("---")
 
 # ==========================================
@@ -218,7 +223,6 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-# Track A: Standard Base Totals
 total_12_month_actual = float(df_engine["Gross Revenue"].sum())
 only_remaining_future_revenue = float(df_engine[df_engine["Status"] == "Future (Projected)"]["Gross Revenue"].sum())
 total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
@@ -232,7 +236,6 @@ col_m2.metric(label="Projected Remaining Inflows", value=f"₹{only_remaining_fu
 col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
 
-# Track B: Parallel Zero-Tax Simulation Totals
 total_sim_extra_tds = float(df_engine["Simulated Extra Salary TDS"].sum())
 total_base_tds = float(df_engine["Salary TDS (To Remit)"].sum())
 grand_total_personal_tds_remittance = total_base_tds + total_sim_extra_tds
@@ -250,7 +253,6 @@ col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="Ful
 st.write("---")
 st.write("### 📋 Comparative 12-Month Financial Spread Matrix")
 
-# Build a clean data view containing both frameworks side by side
 preview_df = df_engine[[
     "Month", "Status", "Gross Revenue", "Company Salary Expense (Gross)", "Projected Overhead",
     "Corporate Tax Liability", "Simulated Total Gross Salary", "Simulated Extra Salary TDS", "Simulated Corporate Tax"
