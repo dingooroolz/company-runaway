@@ -101,7 +101,7 @@ for idx, m_name in enumerate(FY_MONTHS):
             min_value=0,
             value=int(current_changeable_overhead),
             step=5000,
-            key=f"oh_{month_name}"
+            key=f"oh_{m_name}"
         )
         status = "Future (Projected)"
         
@@ -137,66 +137,4 @@ with col_input1:
 with col_input2:
     tax_paid_so_far = st.number_input(
         "🏛️ Actual Tax Settled Up to Date (₹):",
-        min_value=0,
-        value=0,
-        step=5000,
-        help="Input your real-world historical settlements (Advance Tax, TDS credits used, or Q1 payouts)."
-    )
-
-with col_input3:
-    st.caption("ℹ️ **Engine Rule Framework**")
-    st.info(f"Past month manual revenue changes will affect EOY totals. Your Freely Withdrawable Cash is strictly calculated based on the current active month ({current_month}) constraints.")
-
-st.write("---")
-
-current_month_overhead_commitment = df_engine.loc[current_month_idx, "Overhead"]
-current_month_tax_liability = df_engine.loc[current_month_idx, "Tax Liability"]
-
-freely_withdrawable_cash = bank_balance - current_month_overhead_commitment - current_month_tax_liability
-
-# ==========================================
-# 5. VISUAL METRICS DISPLAY
-# ==========================================
-st.subheader("🏁 Safe Withdrawal Matrix")
-
-if freely_withdrawable_cash >= 0:
-    st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
-else:
-    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
-
-with st.expander("🔍 Operational Breakdown"):
-    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
-    st.write(f"⚠️ *Minus* Active Monthly Overhead Budget Allocation ({current_month}): -₹{current_month_overhead_commitment:,.2f}")
-    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month Revenue: -₹{current_month_tax_liability:,.2f}")
-    st.write("---")
-    st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
-
-st.write("---")
-
-# ==========================================
-# 6. END OF YEAR FORECASTING BLOCKS
-# ==========================================
-st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
-
-# Calculate isolated historical total actual revenue
-total_actual_revenue_to_date = df_engine[df_engine["Status"] == "Past (Closed)"]["Revenue"].sum()
-
-eoy_revenue = df_engine["Revenue"].sum()
-eoy_calculated_tax = df_engine["Tax Liability"].sum()
-eoy_tds = df_engine["TDS"].sum()
-net_final_tax_payout_due = max(0, eoy_calculated_tax - tax_paid_so_far)
-
-col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
-with col_m1:
-    st.metric(label="Total Actual Revenue (To Date)", value=f"₹{total_actual_revenue_to_date:,.2f}")
-with col_m2:
-    st.metric(label="Total Projected Revenue (Full Yr)", value=f"₹{eoy_revenue:,.2f}")
-with col_m3:
-    st.metric(label="Est. Corporate Tax (Total Yr)", value=f"₹{eoy_calculated_tax:,.2f}")
-with col_m4:
-    st.metric(label="Estimated TDS Accrued", value=f"₹{eoy_tds:,.2f}")
-with col_m5:
-    st.metric(label="Net EOY Balance Due to Gov", value=f"₹{net_final_tax_payout_due:,.2f}", delta=f"-₹{tax_paid_so_far} Paid", delta_color="inverse")
-
-st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
-st.dataframe(df_engine, use_container_width=True)
+        min_value
