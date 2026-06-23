@@ -7,7 +7,7 @@ import pandas as pd
 st.set_page_config(page_title="True Free Cash Engine", page_icon="💰", layout="wide")
 
 st.title("💼 True Free Cash & EOY Tax Forecasting Engine")
-st.write("Strip away business overhead and accurate tax liabilities to see exactly what you can withdraw right now.")
+st.write("Strip away director salaries and accurate corporate tax liabilities to see exactly what you can safely withdraw right now.")
 st.write("---")
 
 # Define the Indian Financial Year sequence (April to March)
@@ -18,6 +18,7 @@ FY_MONTHS = [
 
 # Default baseline assumptions
 BASELINE_REV = 500000
+BASELINE_SALARY = 100000
 BASELINE_OH = 150000
 
 # ==========================================
@@ -61,10 +62,19 @@ current_active_revenue = st.sidebar.number_input(
     key="current_rev"
 )
 
+current_director_salary = st.sidebar.number_input(
+    f"Director Salary for {current_month}:",
+    min_value=0,
+    value=BASELINE_SALARY,
+    step=10000,
+    help="This acts as a business deduction, directly reducing your company's taxable profit.",
+    key="current_salary"
+)
+
 # --- SIDEBAR SECTION 3: FUTURE MONTHS PROJECTIONS ---
 st.sidebar.write("---")
 st.sidebar.subheader("🔮 Remaining Months Projections")
-st.sidebar.caption("Independently adjust expected revenue and overhead constraints:")
+st.sidebar.caption("Independently adjust expected revenue, salaries, and overhead constraints:")
 
 # ==========================================
 # 3. CORE ENGINE LOGIC & CALCULATIONS
@@ -75,11 +85,13 @@ for idx, m_name in enumerate(FY_MONTHS):
     if idx < current_month_idx:
         status = "Past (Closed)"
         revenue = past_revenues[m_name]
+        salary = BASELINE_SALARY
         overhead = BASELINE_OH
     elif idx == current_month_idx:
         status = "Present (Active)"
         revenue = current_active_revenue
-        overhead = 0  # Factored directly out of bank balance
+        salary = current_director_salary
+        overhead = 0  # General operations overhead is already factored directly out of bank balance
     else:
         st.sidebar.markdown(f"**{m_name}**")
         revenue = st.sidebar.number_input(
@@ -88,6 +100,13 @@ for idx, m_name in enumerate(FY_MONTHS):
             value=int(current_active_revenue),
             step=25000,
             key=f"rev_{m_name}"
+        )
+        salary = st.sidebar.number_input(
+            f"Projected Director Salary ({m_name}):",
+            min_value=0,
+            value=int(current_director_salary),
+            step=10000,
+            key=f"salary_{m_name}"
         )
         overhead = st.sidebar.number_input(
             f"Projected Overhead ({m_name}):",
@@ -98,18 +117,18 @@ for idx, m_name in enumerate(FY_MONTHS):
         )
         status = "Future (Projected)"
         
-    net_profit = max(0, revenue - overhead)
+    # The crucial change: Director salary reduces net corporate profit margins
+    net_profit = max(0, revenue - salary - overhead)
     calculated_tax = net_profit * 0.25
-    calculated_tds = revenue * 0.10
     
     final_monthly_records.append({
         "Month": m_name,
         "Status": status,
         "Revenue": revenue,
-        "Overhead": overhead,
-        "Net Profit": net_profit,
-        "Tax Liability": calculated_tax,
-        "TDS": calculated_tds
+        "Director Salary": salary,
+        "Projected Overhead": overhead,
+        "Net Taxable Profit": net_profit,
+        "Corporate Tax Liability": calculated_tax
     })
 
 df_engine = pd.DataFrame(final_monthly_records)
@@ -129,12 +148,12 @@ with col_input1:
 
 with col_input2:
     st.caption("ℹ️ **Engine Rule Framework**")
-    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by subtracting the fresh tax liabilities generated from your {current_month} revenue.")
+    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by isolating the fresh corporate tax obligations generated after your active director salary deduction for {current_month}.")
 
 st.write("---")
 
 # Extract live values for current month
-current_month_tax_liability = df_engine.loc[current_month_idx, "Tax Liability"]
+current_month_tax_liability = df_engine.loc[current_month_idx, "Corporate Tax Liability"]
 
 # Pure mathematical withdrawal formula
 freely_withdrawable_cash = bank_balance - current_month_tax_liability
@@ -151,7 +170,8 @@ else:
 
 with st.expander("🔍 Operational Breakdown"):
     st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
-    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month Revenue: -₹{current_month_tax_liability:,.2f}")
+    st.write(f"ℹ️ *Salary Strategy:* Deducting a salary of ₹{current_director_salary:,.2f} safely lowered your corporate tax bill for the month.")
+    st.write(f"⚠️ *Minus* Live Predicted Corporate Tax Liability Generated (25% of profit): -₹{current_month_tax_liability:,.2f}")
     st.write("---")
     st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
 
@@ -169,12 +189,11 @@ total_12_month_actual = df_engine["Revenue"].sum()
 only_remaining_future_revenue = df_engine[df_engine["Status"] == "Future (Projected)"]["Revenue"].sum()
 
 # Liabilities and profit models
-total_corporate_tax = df_engine["Tax Liability"].sum()
-total_tds_deducted = df_engine["TDS"].sum()
-total_full_year_net_profit = df_engine["Net Profit"].sum()
+total_corporate_tax = df_engine["Corporate Tax Liability"].sum()
+total_full_year_net_profit = df_engine["Net Taxable Profit"].sum()
 profit_after_corporate_tax = max(0, total_full_year_net_profit - total_corporate_tax)
 
-col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 with col_m1:
     st.metric(label="My Actual Company Revenue", value=f"₹{total_12_month_actual:,.2f}")
 with col_m2:
@@ -182,8 +201,6 @@ with col_m2:
 with col_m3:
     st.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 with col_m4:
-    st.metric(label="What Company Deducted as TDS", value=f"₹{total_tds_deducted:,.2f}")
-with col_m5:
     st.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
 
 st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
