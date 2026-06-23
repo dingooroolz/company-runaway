@@ -48,7 +48,7 @@ for idx in range(current_month_idx):
         key=f"past_rev_{m_name}"
     )
 
-# --- SIDEBAR SECTION 2: CURRENT MONTH TUNING (OVERHEAD REMOVED) ---
+# --- SIDEBAR SECTION 2: CURRENT MONTH TUNING ---
 st.sidebar.write("---")
 st.sidebar.subheader("📊 Current Month Tuning")
 st.sidebar.markdown(f"**Current Month ({current_month})**")
@@ -79,7 +79,7 @@ for idx, m_name in enumerate(FY_MONTHS):
     elif idx == current_month_idx:
         status = "Present (Active)"
         revenue = current_active_revenue
-        overhead = 0  # Overhead is already factored in bank balance and prior tax inputs
+        overhead = 0  # Factored directly out of bank balance
     else:
         st.sidebar.markdown(f"**{m_name}**")
         revenue = st.sidebar.number_input(
@@ -117,7 +117,7 @@ df_engine = pd.DataFrame(final_monthly_records)
 # ==========================================
 # 4. LIQUIDITY INPUTS & WATERFALL MATH
 # ==========================================
-col_input1, col_input2, col_input3 = st.columns(3)
+col_input1, col_input2 = st.columns(2)
 
 with col_input1:
     bank_balance = st.number_input(
@@ -128,15 +128,6 @@ with col_input1:
     )
 
 with col_input2:
-    tax_paid_so_far = st.number_input(
-        "🏛️ Actual Tax Settled Up to Date (₹):",
-        min_value=0,
-        value=0,
-        step=5000,
-        help="Input your cumulative historical settlements + tax covered by past expenses up to date."
-    )
-
-with col_input3:
     st.caption("ℹ️ **Engine Rule Framework**")
     st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by subtracting the fresh tax liabilities generated from your {current_month} revenue.")
 
