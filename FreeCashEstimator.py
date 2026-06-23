@@ -143,7 +143,7 @@ for idx, m_name in enumerate(FY_MONTHS):
     if idx < current_month_idx:
         status = "Past (Closed)"
         revenue = past_revenues[m_name]
-        net_sal = float(current_net_target)
+        net_sal = float(current_net_target) if current_net_target > 0 else float(BASELINE_NET_SALARY)
         gross_sal, tds_val = calculate_gross_salary_and_tds(net_sal)
         overhead = float(BASELINE_OH)
     elif idx == current_month_idx:
@@ -196,4 +196,63 @@ df_engine = pd.DataFrame(final_monthly_records)
 # ==========================================
 # 5. LIQUIDITY INPUTS & WATERFALL MATH
 # ==========================================
-col_input1, col_input2
+col_input1, col_input2 = st.columns(2)
+
+with col_input1:
+    bank_balance = st.number_input(
+        "💵 Current Bank Balance (₹):", 
+        min_value=0, 
+        value=1000000, 
+        step=25000,
+        key="main_bank_balance"
+    )
+
+with col_input2:
+    st.caption("ℹ️ **Engine Rule Framework**")
+    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by isolating the fresh corporate tax obligations generated after factoring in your grossed-up director salary for {current_month}.")
+
+st.write("---")
+
+current_month_tax_liability = float(df_engine.loc[current_month_idx, "Corporate Tax Liability"])
+freely_withdrawable_cash = float(bank_balance - current_month_tax_liability)
+
+# ==========================================
+# 6. VISUAL METRICS DISPLAY
+# ==========================================
+st.subheader("🏁 Safe Withdrawal Matrix")
+
+if freely_withdrawable_cash >= 0:
+    st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
+else:
+    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
+
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
+    st.write(f"💼 *Salary Gross-Up Info:* To receive ₹{current_net_target:,.2f} net, the company accounts for a gross salary expense of **₹{current_gross_salary:,.2f}** (includes **₹{current_monthly_tds:,.2f}** personal TDS to remit).")
+    st.write(f"⚠️ *Minus* Live Predicted Corporate Tax Liability Generated (25% of net profit): -₹{current_month_tax_liability:,.2f}")
+    st.write("---")
+    st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
+
+st.write("---")
+
+# ==========================================
+# 7. FISCAL SUMMARY SCOREBOARD
+# ==========================================
+st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
+
+total_12_month_actual = float(df_engine["Gross Revenue"].sum())
+only_remaining_future_revenue = float(df_engine[df_engine["Status"] == "Future (Projected)"]["Gross Revenue"].sum())
+total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
+total_full_year_net_profit = float(df_engine["Net Corporate Profit"].sum())
+profit_after_corporate_tax = max(0.0, float(total_full_year_net_profit - total_corporate_tax))
+
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+col_m1.metric(label="My Actual Company Revenue", value=f"₹{total_12_month_actual:,.2f}")
+col_m2.metric(label="My Projected Revenue", value=f"₹{only_remaining_future_revenue:,.2f}")
+col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
+col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
+
+st.write("---")
+st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
+preview_df = df_engine[["Month", "Status", "Gross Revenue", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Projected Overhead", "Net Corporate Profit", "Corporate Tax Liability"]]
+st.dataframe(preview_df, use_container_width=True)
