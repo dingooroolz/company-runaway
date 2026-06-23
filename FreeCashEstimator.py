@@ -7,7 +7,7 @@ import pandas as pd
 st.set_page_config(page_title="True Free Cash Engine", page_icon="💰", layout="wide")
 
 st.title("💼 True Free Cash & EOY Tax Forecasting Engine")
-st.write("Automatically grosses up your net director salary to track real-world business deductions and optimize corporate tax reservations.")
+st.write("Drives your live bank balance directly from real-time revenues, grossed-up salaries, and active operational overhead inputs.")
 st.write("---")
 
 # Define the Indian Financial Year sequence (April to March)
@@ -39,7 +39,6 @@ def calculate_gross_salary_and_tds(target_net_monthly):
         high_gross = target_net_annual * 3.0
         exact_gross_annual = target_net_annual
         
-        # Safe bounded loop
         for _ in range(40):
             mid_gross = (low_gross + high_gross) / 2.0
             taxable_salary = max(0.0, mid_gross - 75000.0)
@@ -127,7 +126,16 @@ current_net_target = st.sidebar.number_input(
     key="main_current_net_salary"
 )
 
-# Run conversion safely away from layout commands
+# NEW INPUT: Real-time current month operational overhead expenses
+current_active_overhead = st.sidebar.number_input(
+    f"Overhead Expenses for {current_month}:",
+    min_value=0,
+    value=int(BASELINE_OH),
+    step=5000,
+    key="main_current_overhead"
+)
+
+# Run conversion safely
 current_gross_salary, current_monthly_tds = calculate_gross_salary_and_tds(current_net_target)
 
 # --- SIDEBAR SECTION 3: FUTURE MONTHS PROJECTIONS ---
@@ -151,7 +159,7 @@ for idx, m_name in enumerate(FY_MONTHS):
         revenue = float(current_active_revenue)
         gross_sal = float(current_gross_salary)
         tds_val = float(current_monthly_tds)
-        overhead = 0.0
+        overhead = float(current_active_overhead) # Dynamically bound to the new input box
     else:
         st.sidebar.markdown(f"**{m_name}**")
         revenue = st.sidebar.number_input(
@@ -171,7 +179,7 @@ for idx, m_name in enumerate(FY_MONTHS):
         overhead = st.sidebar.number_input(
             f"Projected Overhead ({m_name}):",
             min_value=0,
-            value=int(BASELINE_OH),
+            value=int(current_active_overhead),
             step=5000,
             key=f"loop_oh_{m_name}"
         )
@@ -194,27 +202,12 @@ for idx, m_name in enumerate(FY_MONTHS):
 df_engine = pd.DataFrame(final_monthly_records)
 
 # ==========================================
-# 5. LIQUIDITY INPUTS & WATERFALL MATH
+# 5. AUTOMATED LIQUIDITY & WATERFALL MATH
 # ==========================================
-col_input1, col_input2 = st.columns(2)
-
-with col_input1:
-    bank_balance = st.number_input(
-        "💵 Current Bank Balance (₹):", 
-        min_value=0, 
-        value=1000000, 
-        step=25000,
-        key="main_bank_balance"
-    )
-
-with col_input2:
-    st.caption("ℹ️ **Engine Rule Framework**")
-    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by isolating the fresh corporate tax obligations generated after factoring in your grossed-up director salary for {current_month}.")
-
-st.write("---")
-
+# NEW MATH: Derive bank balance strictly from mathematical operational rules
+calculated_bank_balance = float(current_active_revenue - current_gross_salary - current_active_overhead)
 current_month_tax_liability = float(df_engine.loc[current_month_idx, "Corporate Tax Liability"])
-freely_withdrawable_cash = float(bank_balance - current_month_tax_liability)
+freely_withdrawable_cash = float(calculated_bank_balance - current_month_tax_liability)
 
 # ==========================================
 # 6. VISUAL METRICS DISPLAY
@@ -227,8 +220,9 @@ else:
     st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
 
 with st.expander("🔍 Operational Breakdown"):
-    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
-    st.write(f"💼 *Salary Gross-Up Info:* To receive ₹{current_net_target:,.2f} net, the company accounts for a gross salary expense of **₹{current_gross_salary:,.2f}** (includes **₹{current_monthly_tds:,.2f}** personal TDS to remit).")
+    st.write(f"**Calculated Bank Balance (Revenue - Gross Salary - Overhead):** ₹{calculated_bank_balance:,.2f}")
+    st.write(f"💼 *Salary Breakdown:* Net payout of ₹{current_net_target:,.2f} + Company TDS reservation of ₹{current_monthly_tds:,.2f} = Total Gross Expense of **₹{current_gross_salary:,.2f}**")
+    st.write(f"🛠️ *Overhead Cost Deduction:* -₹{current_active_overhead:,.2f}")
     st.write(f"⚠️ *Minus* Live Predicted Corporate Tax Liability Generated (25% of net profit): -₹{current_month_tax_liability:,.2f}")
     st.write("---")
     st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
