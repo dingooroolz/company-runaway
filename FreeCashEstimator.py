@@ -166,14 +166,9 @@ for idx, m_name in enumerate(FY_MONTHS):
     standard_corp_tax = float(standard_net_profit * 0.25)
     
     # --- PARALLEL OVERHEAD SURPLUS SIMULATION MATH ---
-    # The surplus gross cash available inside the company before corporate tax
     gross_surplus = standard_net_profit 
-    
-    # Personal tax slab impact on the extra surplus chunk (~31.2% effective highest slab)
     surplus_tds = float(gross_surplus * 0.312) if gross_surplus > 0 else 0.0
     net_surplus_payout = max(0.0, gross_surplus - surplus_tds)
-    
-    # Grand final combined take-home hitting personal account (Base Net Salary + Net Surplus Portion)
     total_net_personal_takehome = float(net_sal + net_surplus_payout)
     
     final_monthly_records.append({
@@ -186,7 +181,7 @@ for idx, m_name in enumerate(FY_MONTHS):
         "Projected Overhead": float(overhead),
         "Net Corporate Profit": float(standard_net_profit),
         "Corporate Tax Liability": float(standard_corp_tax),
-        # Personal Account Split Tracking Fields
+        # Personal Ledger Allocations
         "Gross Surplus": float(gross_surplus),
         "Surplus TDS": float(surplus_tds),
         "Net Surplus (After Tax)": float(net_surplus_payout),
@@ -201,8 +196,6 @@ df_engine = pd.DataFrame(final_monthly_records)
 calculated_bank_balance = float(current_active_revenue - current_gross_salary - current_active_overhead)
 current_month_tax_liability = float(df_engine.loc[current_month_idx, "Corporate Tax Liability"])
 freely_withdrawable_cash = float(calculated_bank_balance - current_month_tax_liability)
-
-# Extract live personal take-home numbers for the current month
 current_month_personal_cash = float(df_engine.loc[current_month_idx, "Total Tax-Free Personal Cash Flow"])
 
 # ==========================================
@@ -221,7 +214,6 @@ with col_w2:
     st.subheader("👤 Live Personal Wallet Sync")
     st.info(f"### Current Month Tax-Free Cash: **₹{current_month_personal_cash:,.2f}**")
 
-# Detailed breakdown analysis component
 with st.expander("🔍 Operational Breakdown"):
     st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** ₹{current_active_revenue:,.2f}")
     st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of ₹{current_net_target:,.2f} + Company TDS reservation of ₹{current_monthly_tds:,.2f} = Total Gross Expense of **-₹{current_gross_salary:,.2f}**")
@@ -234,7 +226,7 @@ with st.expander("🔍 Operational Breakdown"):
 st.write("---")
 
 # ==========================================
-# 7. FISCAL SUMMARY SCOREBOARDS (COMPARATIVE LAYOUT)
+# 7. FISCAL SUMMARY SCOREBOARDS
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
@@ -251,7 +243,6 @@ col_m2.metric(label="Projected Remaining Inflows", value=f"₹{only_remaining_fu
 col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
 
-# Track B: Parallel Zero-Tax Simulation Totals
 grand_annual_tax_free_personal_cash = float(df_engine["Total Tax-Free Personal Cash Flow"].sum())
 total_base_tds = float(df_engine["Salary TDS (To Remit)"].sum())
 total_surplus_tds = float(df_engine["Surplus TDS"].sum())
@@ -259,18 +250,17 @@ grand_total_personal_tds_remittance = total_base_tds + total_surplus_tds
 
 st.write("---")
 st.markdown("#### ⚡ Parallel Scenario Strategy: *Zero-Tax Salary Surplus Optimization*")
-st.caption("This model simulates sweeping 100% of residual company cash out as a director salary bonus across all months to force company taxable income down to zero.")
 
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta="-100% Tax Drop", delta_color="inverse")
-col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}", delta="Remitted via Paychex", delta_color="off")
-col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}", help="Total combined net salary + net surplus cleared directly into your personal savings account across the 12-month sequence.")
+col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}")
+col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}")
 col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="Fully Extracted", delta_color="normal")
 
 st.write("---")
 
 # ==========================================
-# 8. SPREADSHEET MATRIX VIEW TABS
+# 8. SPREADSHEET MATRIX VIEW TABS WITH SUMMATION
 # ==========================================
 st.write("### 📋 12-Month Financial Spread Matrix Split-Ledgers")
 
@@ -286,13 +276,14 @@ with tab_corp:
 
 with tab_personal:
     st.markdown("##### 100% Tax-Free Cash-Flow Inflow Ledger hitting your Personal Account")
-    personal_df = df_engine[[
-        "Month", "Gross Verification Status" if False else "Status",
-        "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Net Take-Home Salary",
-        "Gross Surplus", "Surplus TDS", "Net Surplus (After Tax)", "Total Tax-Free Personal Cash Flow"
-    ]]
     
-    # Rename for pinpoint readability matching user's exact specification list
+    # 1. Isolate and rename columns as specified
+    personal_df = df_engine[[
+        "Month", "Status", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", 
+        "Net Take-Home Salary", "Gross Surplus", "Surplus TDS", "Net Surplus (After Tax)", 
+        "Total Tax-Free Personal Cash Flow"
+    ]].copy()
+    
     personal_df = personal_df.rename(columns={
         "Company Salary Expense (Gross)": "Gross Salary",
         "Salary TDS (To Remit)": "TDS on Gross Salary",
@@ -300,4 +291,6 @@ with tab_personal:
         "Net Surplus (After Tax)": "Surplus (After TDS)",
         "Total Tax-Free Personal Cash Flow": "Net Take-Home (Salary + Surplus)"
     })
-    st.dataframe(personal_df, use_container_width=True)
+    
+    # 2. Compute full sums for numeric columns to forge a custom summary row
+    numeric_cols
