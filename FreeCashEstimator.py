@@ -164,4 +164,42 @@ freely_withdrawable_cash = bank_balance - current_month_overhead_commitment - cu
 st.subheader("🏁 Safe Withdrawal Matrix")
 
 if freely_withdrawable_cash >= 0:
-    st.success(f"### Freely
+    st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
+else:
+    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}** (Operational Capital Injection Required)")
+
+# Explanatory breakdown expander
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
+    st.write(f"⚠️ *Minus* Active Monthly Overhead Budget Allocation ({current_month}): -₹{current_month_overhead_commitment:,.2f}")
+    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month Revenue: -₹{current_month_tax_liability:,.2f}")
+    st.write("---")
+    st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
+
+st.write("---")
+
+# ==========================================
+# 7. END OF YEAR FORECASTING BLOCKS
+# ==========================================
+st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
+
+eoy_revenue = df_engine["Revenue"].sum()
+eoy_calculated_tax = df_engine["Tax Liability"].sum()
+eoy_tds = df_engine["TDS"].sum()
+
+# Adjust corporate calculations to account for real-world tax payments entered
+net_final_tax_payout_due = max(0, eoy_calculated_tax - tax_paid_so_far)
+
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+with col_m1:
+    st.metric(label="Total Projected Revenue", value=f"₹{eoy_revenue:,.2f}")
+with col_m2:
+    st.metric(label="Est. Corporate Tax (Total Yr)", value=f"₹{eoy_calculated_tax:,.2f}")
+with col_m3:
+    st.metric(label="Estimated TDS Accrued", value=f"₹{eoy_tds:,.2f}")
+with col_m4:
+    st.metric(label="Net EOY Balance Due to Gov", value=f"₹{net_final_tax_payout_due:,.2f}", delta=f"-₹{tax_paid_so_far} Paid", delta_color="inverse")
+
+# Render underlying operational database grid
+st.write("### 📋 Underlying 12-Month Financial Spread Matrix")
+st.dataframe(df_engine, use_container_width=True)
