@@ -144,5 +144,106 @@ for idx, m_name in enumerate(FY_MONTHS):
     if idx < current_month_idx:
         status = "Past (Closed)"
         revenue = past_revenues[m_name]
-        net_sal = BASEION_NET_SALARY if 'current_net_target' not in locals() else current_net_target
-        gross_sal, tds
+        net_sal = BASELINE_NET_SALARY if 'current_net_target' not in locals() else current_net_target
+        gross_sal, tds_val = calculate_gross_salary_and_tds(net_sal)
+        overhead = BASELINE_OH
+    elif idx == current_month_idx:
+        status = "Present (Active)"
+        revenue = current_active_revenue
+        gross_sal = current_gross_salary
+        tds_val = current_monthly_tds
+        overhead = 0  # Operations overhead is already cleared from your active bank balance
+    else:
+        st.sidebar.markdown(f"**{m_name}**")
+        revenue = st.sidebar.number_input(
+            f"Projected Revenue ({m_name}):",
+            min_value=0,
+            value=int(current_active_revenue),
+            step=25000,
+            key=f"rev_{m_name}"
+        )
+        fut_net = st.sidebar.number_input(
+            f"Projected Net Take-Home ({m_name}):",
+            min_value=0,
+            value=int(current_net_target),
+            step=10000,
+            key=f"net_sal_{m_name}"
+        )
+        gross_sal, tds_val = calculate_gross_salary_and_tds(fut_net)
+        overhead = st.sidebar.number_input(
+            f"Projected Overhead ({m_name}):",
+            min_value=0,
+            value=int(BASELINE_OH),
+            step=5000,
+            key=f"oh_{m_name}"
+        )
+        status = "Future (Projected)"
+        
+    # Gross salary acts as the official business deduction against company revenue
+    net_profit = max(0, revenue - gross_sal - overhead)
+    calculated_tax = net_profit * 0.25
+    
+    final_monthly_records.append({
+        "Month": m_name,
+        "Status": status,
+        "Gross Revenue": revenue,
+        "Company Salary Expense (Gross)": gross_sal,
+        "Salary TDS (To Remit)": tds_val,
+        "Projected Overhead": overhead,
+        "Net Corporate Profit": net_profit,
+        "Corporate Tax Liability": calculated_tax
+    })
+
+df_engine = pd.DataFrame(final_monthly_records)
+
+# ==========================================
+# 5. LIQUIDITY INPUTS & WATERFALL MATH
+# ==========================================
+col_input1, col_input2 = st.columns(2)
+
+with col_input1:
+    bank_balance = st.number_input(
+        "💵 Current Bank Balance (₹):", 
+        min_value=0, 
+        value=1000000, 
+        step=25000
+    )
+
+with col_input2:
+    st.caption("ℹ️ **Engine Rule Framework**")
+    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by isolating the fresh corporate tax obligations generated after factoring in your grossed-up director salary for {current_month}.")
+
+st.write("---")
+
+# Extract corporate tax liability for the current active month
+current_month_tax_liability = df_engine.loc[current_month_idx, "Corporate Tax Liability"]
+
+# Pure mathematical withdrawal formula
+freely_withdrawable_cash = bank_balance - current_month_tax_liability
+
+# ==========================================
+# 6. VISUAL METRICS DISPLAY
+# ==========================================
+st.subheader("🏁 Safe Withdrawal Matrix")
+
+if freely_withdrawable_cash >= 0:
+    st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
+else:
+    st.error(f"### Shortfall Warning! Negative Liquidity Balance: **₹{freely_withdrawable_cash:,.2f}**")
+
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
+    st.write(f"💼 *Salary Gross-Up Info:* To receive ₹{current_net_target:,.2f} net, the company accounts for a gross salary expense of **₹{current_gross_salary:,.2f}** (includes **₹{current_monthly_tds:,.2f}** personal TDS to remit).")
+    st.write(f"⚠️ *Minus* Live Predicted Corporate Tax Liability Generated (25% of net profit): -₹{current_month_tax_liability:,.2f}")
+    st.write("---")
+    st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
+
+st.write("---")
+
+# ==========================================
+# 7. FISCAL SUMMARY SCOREBOARD
+# ==========================================
+st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
+
+# 1. My Actual Company Revenue = Complete 12-month total
+total_12_month_actual = df_engine["Gross Revenue"].sum
