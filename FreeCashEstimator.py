@@ -126,7 +126,6 @@ current_net_target = st.sidebar.number_input(
     key="main_current_net_salary"
 )
 
-# NEW INPUT: Real-time current month operational overhead expenses
 current_active_overhead = st.sidebar.number_input(
     f"Overhead Expenses for {current_month}:",
     min_value=0,
@@ -141,6 +140,15 @@ current_gross_salary, current_monthly_tds = calculate_gross_salary_and_tds(curre
 # --- SIDEBAR SECTION 3: FUTURE MONTHS PROJECTIONS ---
 st.sidebar.write("---")
 st.sidebar.subheader("🔮 Remaining Months Projections")
+
+# NEW CONTROLS: Global vs Individual Override Framework Toggle
+use_global_override = st.sidebar.toggle("🔗 Enable Global Run Rate", value=True, help="Turn on to simultaneously lock all future months to the same values. Turn off to adjust individual months.")
+
+if use_global_override:
+    st.sidebar.markdown("⚡ *Global Baseline Drivers*")
+    global_revenue = st.sidebar.number_input("Global Projected Revenue:", min_value=0, value=int(current_active_revenue), step=25000, key="global_rev")
+    global_net_sal = st.sidebar.number_input("Global Projected Net Take-Home:", min_value=0, value=int(current_net_target), step=10000, key="global_net_sal")
+    global_overhead = st.sidebar.number_input("Global Projected Overhead:", min_value=0, value=int(current_active_overhead), step=5000, key="global_oh")
 
 # ==========================================
 # 4. CORE ENGINE LOGIC & CALCULATIONS
@@ -159,31 +167,37 @@ for idx, m_name in enumerate(FY_MONTHS):
         revenue = float(current_active_revenue)
         gross_sal = float(current_gross_salary)
         tds_val = float(current_monthly_tds)
-        overhead = float(current_active_overhead) # Dynamically bound to the new input box
+        overhead = float(current_active_overhead)
     else:
-        st.sidebar.markdown(f"**{m_name}**")
-        revenue = st.sidebar.number_input(
-            f"Projected Revenue ({m_name}):",
-            min_value=0,
-            value=int(current_active_revenue),
-            step=25000,
-            key=f"loop_rev_{m_name}"
-        )
-        fut_net = st.sidebar.number_input(
-            f"Projected Net Take-Home ({m_name}):",
-            min_value=0,
-            value=int(current_net_target),
-            step=10000,
-            key=f"loop_net_sal_{m_name}"
-        )
-        overhead = st.sidebar.number_input(
-            f"Projected Overhead ({m_name}):",
-            min_value=0,
-            value=int(current_active_overhead),
-            step=5000,
-            key=f"loop_oh_{m_name}"
-        )
         status = "Future (Projected)"
+        if use_global_override:
+            revenue = float(global_revenue)
+            gross_sal, tds_val = calculate_gross_salary_and_tds(global_net_sal)
+            overhead = float(global_overhead)
+        else:
+            st.sidebar.markdown(f"**{m_name}**")
+            revenue = st.sidebar.number_input(
+                f"Projected Revenue ({m_name}):",
+                min_value=0,
+                value=int(current_active_revenue),
+                step=25000,
+                key=f"loop_rev_{m_name}"
+            )
+            fut_net = st.sidebar.number_input(
+                f"Projected Net Take-Home ({m_name}):",
+                min_value=0,
+                value=int(current_net_target),
+                step=10000,
+                key=f"loop_net_sal_{m_name}"
+            )
+            gross_sal, tds_val = calculate_gross_salary_and_tds(fut_net)
+            overhead = st.sidebar.number_input(
+                f"Projected Overhead ({m_name}):",
+                min_value=0,
+                value=int(current_active_overhead),
+                step=5000,
+                key=f"loop_oh_{m_name}"
+            )
         
     net_profit = max(0.0, float(revenue - gross_sal - overhead))
     calculated_tax = float(net_profit * 0.25)
@@ -204,7 +218,6 @@ df_engine = pd.DataFrame(final_monthly_records)
 # ==========================================
 # 5. AUTOMATED LIQUIDITY & WATERFALL MATH
 # ==========================================
-# NEW MATH: Derive bank balance strictly from mathematical operational rules
 calculated_bank_balance = float(current_active_revenue - current_gross_salary - current_active_overhead)
 current_month_tax_liability = float(df_engine.loc[current_month_idx, "Corporate Tax Liability"])
 freely_withdrawable_cash = float(calculated_bank_balance - current_month_tax_liability)
