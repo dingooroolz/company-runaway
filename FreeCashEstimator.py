@@ -48,7 +48,7 @@ for idx in range(current_month_idx):
         key=f"past_rev_{m_name}"
     )
 
-# --- SIDEBAR SECTION 2: CURRENT MONTH TUNING ---
+# --- SIDEBAR SECTION 2: CURRENT MONTH TUNING (OVERHEAD REMOVED) ---
 st.sidebar.write("---")
 st.sidebar.subheader("📊 Current Month Tuning")
 st.sidebar.markdown(f"**Current Month ({current_month})**")
@@ -59,14 +59,6 @@ current_active_revenue = st.sidebar.number_input(
     value=BASELINE_REV,
     step=25000,
     key="current_rev"
-)
-current_changeable_overhead = st.sidebar.number_input(
-    f"Active Overhead for {current_month}:",
-    min_value=0,
-    value=BASELINE_OH,
-    step=5000,
-    help="Note: This is used to calculate your tax discount. It will not be double-deducted from your cash flow.",
-    key="current_oh"
 )
 
 # --- SIDEBAR SECTION 3: FUTURE MONTHS PROJECTIONS ---
@@ -87,7 +79,7 @@ for idx, m_name in enumerate(FY_MONTHS):
     elif idx == current_month_idx:
         status = "Present (Active)"
         revenue = current_active_revenue
-        overhead = current_changeable_overhead
+        overhead = 0  # Overhead is already factored in bank balance and prior tax inputs
     else:
         st.sidebar.markdown(f"**{m_name}**")
         revenue = st.sidebar.number_input(
@@ -100,7 +92,7 @@ for idx, m_name in enumerate(FY_MONTHS):
         overhead = st.sidebar.number_input(
             f"Projected Overhead ({m_name}):",
             min_value=0,
-            value=int(current_changeable_overhead),
+            value=int(BASELINE_OH),
             step=5000,
             key=f"oh_{m_name}"
         )
@@ -146,14 +138,14 @@ with col_input2:
 
 with col_input3:
     st.caption("ℹ️ **Engine Rule Framework**")
-    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves. It assumes current month overhead is already cleared from your bank balance and only reserves the newly generated tax liability.")
+    st.info(f"Your Freely Withdrawable Cash protects your liquid reserves by subtracting the fresh tax liabilities generated from your {current_month} revenue.")
 
 st.write("---")
 
 # Extract live values for current month
 current_month_tax_liability = df_engine.loc[current_month_idx, "Tax Liability"]
 
-# ADJUSTED LOGIC: Overhead is already out of the bank balance, so do NOT subtract it again here.
+# Pure mathematical withdrawal formula
 freely_withdrawable_cash = bank_balance - current_month_tax_liability
 
 # ==========================================
@@ -168,8 +160,7 @@ else:
 
 with st.expander("🔍 Operational Breakdown"):
     st.write(f"**Starting Bank Balance Raw Liquidity:** ₹{bank_balance:,.2f}")
-    st.write(f"ℹ️ *Overhead Note:* Your entered monthly overhead is already factored into your bank balance.")
-    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month (after overhead deduction): -₹{current_month_tax_liability:,.2f}")
+    st.write(f"⚠️ *Minus* Live Predicted Tax Liability Generated for Current Month Revenue: -₹{current_month_tax_liability:,.2f}")
     st.write("---")
     st.write(f"**Net Discovered Spendable Capital:** ₹{freely_withdrawable_cash:,.2f}")
 
