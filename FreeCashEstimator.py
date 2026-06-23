@@ -178,9 +178,8 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-# Calculations for your exact 5 required fields
-actual_revenue_to_date = df_engine[df_engine["Status"] == "Past (Closed)"]["Revenue"].sum()
-total_projected_revenue = df_engine["Revenue"].sum()
+# Both revenue variables now point to the total 12-month aggregated sum
+total_12_month_revenue = df_engine["Revenue"].sum()
 total_corporate_tax = df_engine["Tax Liability"].sum()
 total_tds_deducted = df_engine["TDS"].sum()
 
@@ -189,9 +188,9 @@ profit_after_corporate_tax = max(0, total_full_year_net_profit - total_corporate
 
 col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
 with col_m1:
-    st.metric(label="My Actual Company Revenue", value=f"₹{actual_revenue_to_date:,.2f}")
+    st.metric(label="My Actual Company Revenue", value=f"₹{total_12_month_revenue:,.2f}")
 with col_m2:
-    st.metric(label="My Projected Revenue", value=f"₹{total_projected_revenue:,.2f}")
+    st.metric(label="My Projected Revenue", value=f"₹{total_12_month_revenue:,.2f}")
 with col_m3:
     st.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 with col_m4:
