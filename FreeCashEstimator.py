@@ -174,23 +174,27 @@ with st.expander("🔍 Operational Breakdown"):
 st.write("---")
 
 # ==========================================
-# 6. UPDATED FISCAL SUMMARY SCOREBOARD
+# 6. FISCAL SUMMARY SCOREBOARD (MATCHING YOUR DEFINITIONS)
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-# Both revenue variables now point to the total 12-month aggregated sum
-total_12_month_revenue = df_engine["Revenue"].sum()
+# 1. My Actual Company Revenue = Complete 12-month total
+total_12_month_actual = df_engine["Revenue"].sum()
+
+# 2. My Projected Revenue = Remaining future months total only
+only_remaining_future_revenue = df_engine[df_engine["Status"] == "Future (Projected)"]["Revenue"].sum()
+
+# 3, 4, 5. Full year liabilities and profit models
 total_corporate_tax = df_engine["Tax Liability"].sum()
 total_tds_deducted = df_engine["TDS"].sum()
-
 total_full_year_net_profit = df_engine["Net Profit"].sum()
 profit_after_corporate_tax = max(0, total_full_year_net_profit - total_corporate_tax)
 
 col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
 with col_m1:
-    st.metric(label="My Actual Company Revenue", value=f"₹{total_12_month_revenue:,.2f}")
+    st.metric(label="My Actual Company Revenue", value=f"₹{total_12_month_actual:,.2f}")
 with col_m2:
-    st.metric(label="My Projected Revenue", value=f"₹{total_12_month_revenue:,.2f}")
+    st.metric(label="My Projected Revenue", value=f"₹{only_remaining_future_revenue:,.2f}")
 with col_m3:
     st.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
 with col_m4:
