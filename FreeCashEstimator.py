@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 
 # ==========================================
 # 1. PAGE SETUP & CONFIGURATION
@@ -20,6 +21,35 @@ FY_MONTHS = [
 BASELINE_REV = 500000
 BASELINE_NET_SALARY = 300000
 BASELINE_OH = 150000
+
+# ==========================================
+# INDIAN NUMBER FORMATTING FUNCTION
+# ==========================================
+def format_indian_currency(val):
+    """
+    Formats a numeric value into the Indian comma system (e.g., 12,34,567.89)
+    """
+    try:
+        val = float(val)
+        is_negative = val < 0
+        val = abs(val)
+        
+        s = f"{val:.2f}"
+        parts = s.split(".")
+        int_part = parts[0]
+        dec_part = parts[1]
+        
+        if len(int_part) <= 3:
+            result = int_part
+        else:
+            last_three = int_part[-3:]
+            remaining = int_part[:-3]
+            remaining_with_commas = re.sub(r'(.)(?=(..)+$)', r'\1,', remaining)
+            result = f"{remaining_with_commas},{last_three}"
+            
+        return f"-₹{result}.{dec_part}" if is_negative else f"₹{result}.{dec_part}"
+    except Exception:
+        return f"₹{val}"
 
 # ==========================================
 # 2. AUTOMATED SALARY GROSS-UP FUNCTION
@@ -206,22 +236,22 @@ col_w1, col_w2 = st.columns(2)
 with col_w1:
     st.subheader("🏁 Safe Withdrawal Matrix")
     if freely_withdrawable_cash >= 0:
-        st.success(f"### Freely Withdrawable Cash: **₹{freely_withdrawable_cash:,.2f}**")
+        st.success(f"### Freely Withdrawable Cash: **{format_indian_currency(freely_withdrawable_cash)}**")
     else:
-        st.error(f"### Shortfall Warning! Negative Liquidity: **₹{freely_withdrawable_cash:,.2f}**")
+        st.error(f"### Shortfall Warning! Negative Liquidity: **{format_indian_currency(freely_withdrawable_cash)}**")
 
 with col_w2:
     st.subheader("👤 Live Personal Wallet Sync")
-    st.info(f"### Current Month Tax-Free Cash: **₹{current_month_personal_cash:,.2f}**")
+    st.info(f"### Current Month Tax-Free Cash: **{format_indian_currency(current_month_personal_cash)}**")
 
 with st.expander("🔍 Operational Breakdown"):
-    st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** ₹{current_active_revenue:,.2f}")
-    st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of ₹{current_net_target:,.2f} + Company TDS reservation of ₹{current_monthly_tds:,.2f} = Total Gross Expense of **-₹{current_gross_salary:,.2f}**")
-    st.write(f"🛠️ *Step 3. Deduct Overhead Expenses:* -₹{current_active_overhead:,.2f}")
-    st.write(f"➡️ **Calculated Bank Balance (Liquid Leftover):** **₹{calculated_bank_balance:,.2f}**")
-    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of profit):* -₹{current_month_tax_liability:,.2f}")
+    st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** {format_indian_currency(current_active_revenue)}")
+    st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of {format_indian_currency(current_net_target)} + Company TDS reservation of {format_indian_currency(current_monthly_tds)} = Total Gross Expense of **-{format_indian_currency(current_gross_salary)}**")
+    st.write(f"🛠️ *Step 3. Deduct Overhead Expenses:* -{format_indian_currency(current_active_overhead)}")
+    st.write(f"➡️ **Calculated Bank Balance (Liquid Leftover):** **{format_indian_currency(calculated_bank_balance)}**")
+    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of profit):* -{format_indian_currency(current_month_tax_liability)}")
     st.write("---")
-    st.write(f"🏁 **Net Discovered Spendable Capital (Freely Withdrawable Cash):** **₹{freely_withdrawable_cash:,.2f}**")
+    st.write(f"🏁 **Net Discovered Spendable Capital (Freely Withdrawable Cash):** **{format_indian_currency(freely_withdrawable_cash)}**")
 
 st.write("---")
 
@@ -230,29 +260,32 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-# --- Base Metrics Compilations ---
+# Base Metrics Compilations
 total_12_month_actual = float(df_engine["Gross Revenue"].sum()) if df_engine["Gross Revenue"].sum() > 0 else 1.0
 total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
 total_full_year_net_profit = float(df_engine["Net Corporate Profit"].sum())
 profit_after_corporate_tax = max(0.0, float(total_full_year_net_profit - total_corporate_tax))
 total_annual_overhead = float(df_engine["Projected Overhead"].sum())
 total_annual_gross_salary = float(df_engine["Company Salary Expense (Gross)"].sum())
-
-# NEW CONFIGURATION: Aggregate total business expenses
 total_annual_company_expenses = total_annual_overhead + total_annual_gross_salary
+
+# Baseline Baseline TDS calculation
+total_baseline_salary_tds = float(df_engine["Salary TDS (To Remit)"].sum())
 
 # Percentage calculations for Track A
 pct_expenses = (total_annual_company_expenses / total_12_month_actual) * 100
 pct_tax = (total_corporate_tax / total_12_month_actual) * 100
 pct_retained = (profit_after_corporate_tax / total_12_month_actual) * 100
+pct_baseline_tds = (total_baseline_salary_tds / total_12_month_actual) * 100
 
 st.markdown("#### Baseline Strategy (Current Input Configuration)")
 col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
-col_m1.metric(label="Total Annual Revenue", value=f"₹{total_12_month_actual:,.2f}")
-col_m2.metric(label="Total Annual Company Expenses", value=f"₹{total_annual_company_expenses:,.2f}", delta=f"{pct_expenses:.1f}% of Rev", delta_color="inverse")
-col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}", delta=f"{pct_tax:.1f}% of Rev", delta_color="inverse")
-col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}", delta=f"{pct_retained:.1f}% of Rev", delta_color="normal")
-col_m5.metric(label="Total Overhead Portion", value=f"₹{total_annual_overhead:,.2f}")
+col_m1.metric(label="Total Annual Revenue", value=format_indian_currency(total_12_month_actual))
+col_m2.metric(label="Total Annual Company Expenses", value=format_indian_currency(total_annual_company_expenses), delta=f"{pct_expenses:.1f}% of Rev", delta_color="inverse")
+col_m3.metric(label="What Company Owes as Corporate Tax", value=format_indian_currency(total_corporate_tax), delta=f"{pct_tax:.1f}% of Rev", delta_color="inverse")
+col_m4.metric(label="Company Profits After Corporate Tax", value=format_indian_currency(profit_after_corporate_tax), delta=f"{pct_retained:.1f}% of Rev", delta_color="normal")
+# NEW CARD: TDS Withheld from Company under baseline targets
+col_m5.metric(label="Baseline Salary TDS Remitted", value=format_indian_currency(total_baseline_salary_tds), delta=f"{pct_baseline_tds:.1f}% of Rev", delta_color="inverse")
 
 # Track B: Parallel Zero-Tax Simulation Totals & Percentages
 grand_annual_tax_free_personal_cash = float(df_engine["Total Tax-Free Personal Cash Flow"].sum())
@@ -270,8 +303,8 @@ st.markdown("#### ⚡ Parallel Scenario Strategy: *Zero-Tax Salary Surplus Optim
 
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta=f"{pct_sim_overhead:.1f}% Overhead Core", delta_color="off")
-col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}", delta=f"{pct_sim_tds:.1f}% of Rev", delta_color="inverse")
-col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}", delta=f"{pct_sim_personal:.1f}% Clear Net", delta_color="normal")
+col_s2.metric(label="Grand Total Personal TDS To Remit", value=format_indian_currency(grand_total_personal_tds_remittance), delta=f"{pct_sim_tds:.1f}% of Rev", delta_color="inverse")
+col_s3.metric(label="Total Annual Tax-Free Payout", value=format_indian_currency(grand_annual_tax_free_personal_cash), delta=f"{pct_sim_personal:.1f}% Clear Net", delta_color="normal")
 col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="100% Tax Flattened", delta_color="normal")
 
 st.write("---")
@@ -290,26 +323,27 @@ with tab_corp:
         "Net Corporate Profit", "Corporate Tax Liability"
     ]].copy()
     
-    # Generate corporate total rows safely
     corp_cols = ["Gross Revenue", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Projected Overhead", "Net Corporate Profit", "Corporate Tax Liability"]
     corp_totals = {col: float(preview_df[col].sum()) for col in corp_cols}
     corp_totals["Month"] = "📈 TOTALS"
     corp_totals["Status"] = "Full Financial Year Summary"
     
     preview_df_with_total = pd.concat([preview_df, pd.DataFrame([corp_totals])], ignore_index=True)
+    
+    for col in corp_cols:
+        preview_df_with_total[col] = preview_df_with_total[col].apply(format_indian_currency)
+        
     st.dataframe(preview_df_with_total, use_container_width=True)
 
 with tab_personal:
     st.markdown("##### 100% Tax-Free Cash-Flow Inflow Ledger hitting your Personal Account")
     
-    # Isolate base columns
     personal_df = df_engine[[
         "Month", "Status", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", 
         "Net Take-Home Salary", "Gross Surplus", "Surplus TDS", "Net Surplus (After Tax)", 
         "Total Tax-Free Personal Cash Flow"
     ]].copy()
     
-    # Rename matching specs
     personal_df = personal_df.rename(columns={
         "Company Salary Expense (Gross)": "Gross Salary",
         "Salary TDS (To Remit)": "TDS on Gross Salary",
@@ -324,4 +358,8 @@ with tab_personal:
     totals_row["Status"] = "Full Financial Year Summary"
     
     personal_df_with_total = pd.concat([personal_df, pd.DataFrame([totals_row])], ignore_index=True)
+    
+    for col in target_cols:
+        personal_df_with_total[col] = personal_df_with_total[col].apply(format_indian_currency)
+        
     st.dataframe(personal_df_with_total, use_container_width=True)
