@@ -25,7 +25,7 @@ st.sidebar.header("🕹️ Simulation Parameters")
 # Variable 1: Funding Controls the Compounding Interest Rate
 funding_tier = st.sidebar.radio(
     "💰 Funding Allocation Layer:",
-    options=["Seed Tier (Low Growth - 3%)", "Sustained Tier (Med Growth - 7%)", "Exponential Acceleration (High Growth - 11.95%)"],
+    options=["Seed Tier (Low Growth - 3%)", "Sustained Tier (Med Growth - 7%)", "Exponential Acceleration (High Growth - 13.51%)"],
     index=2  # Default to High to let them see the 2,000 target immediately
 )
 
@@ -38,7 +38,7 @@ elif "Med" in funding_tier:
     dot_color = "#FFB300" # Orange
     desc = "Active regional multiplication."
 else:
-    monthly_growth_rate = 0.1195  # Calibrated mathematically to hit exactly ~2000 at month 60
+    monthly_growth_rate = 0.1351  # Calibrated mathematically to hit exactly ~2,000 at month 60
     dot_color = "#D81B60" # Deep Pink
     desc = "High-velocity saturation strategy."
 
@@ -81,7 +81,7 @@ REGIONAL_HUBS = [
 
 # Programmatic coordinate vector generator using a seeded random state 
 # This ensures that when moving time forward/backward, points spawn in the exact same positions
-rng = np.random.default_state = np.random.RandomState(42)
+rng = np.random.RandomState(42)
 
 generated_latitudes = []
 generated_longitudes = []
@@ -120,8 +120,7 @@ df_tri_state = pd.DataFrame({
 col_k1, col_k2, col_k3 = st.columns(3)
 col_k1.metric(label="Current Timeline Phase", value=f"Month {st.session_state.sim_month} / 60", delta=f"Year {round(st.session_state.sim_month/12, 1)}")
 col_k2.metric(label="Compound Monthly Growth (r)", value=f"{monthly_growth_rate*100:.2f}%")
-col_k3.metric(label="Total Projected Plants", value=f"{display_count:,} House Churches", 
-              delta=None if st.session_state.sim_month == 1 else f"{int(display_count - (1 * ((1 + monthly_growth_rate) ** (st.session_state.sim_month - 1)))):+} entries this month")
+col_k3.metric(label="Total Projected Plants", value=f"{display_count:,} House Churches")
 
 st.write("---")
 
