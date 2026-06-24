@@ -226,36 +226,53 @@ with st.expander("🔍 Operational Breakdown"):
 st.write("---")
 
 # ==========================================
-# 7. FISCAL SUMMARY SCOREBOARDS
+# 7. FISCAL SUMMARY SCOREBOARDS & PERCENTAGES
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-total_12_month_actual = float(df_engine["Gross Revenue"].sum())
-only_remaining_future_revenue = float(df_engine[df_engine["Status"] == "Future (Projected)"]["Gross Revenue"].sum())
+# --- Base Metrics Compilations ---
+total_12_month_actual = float(df_engine["Gross Revenue"].sum()) if df_engine["Gross Revenue"].sum() > 0 else 1.0
 total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
 total_full_year_net_profit = float(df_engine["Net Corporate Profit"].sum())
 profit_after_corporate_tax = max(0.0, float(total_full_year_net_profit - total_corporate_tax))
+total_annual_overhead = float(df_engine["Projected Overhead"].sum())
+total_annual_gross_salary = float(df_engine["Company Salary Expense (Gross)"].sum())
+
+# NEW CONFIGURATION: Aggregate total business expenses
+total_annual_company_expenses = total_annual_overhead + total_annual_gross_salary
+
+# Percentage calculations for Track A
+pct_expenses = (total_annual_company_expenses / total_12_month_actual) * 100
+pct_tax = (total_corporate_tax / total_12_month_actual) * 100
+pct_retained = (profit_after_corporate_tax / total_12_month_actual) * 100
 
 st.markdown("#### Baseline Strategy (Current Input Configuration)")
-col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
 col_m1.metric(label="Total Annual Revenue", value=f"₹{total_12_month_actual:,.2f}")
-col_m2.metric(label="Projected Remaining Inflows", value=f"₹{only_remaining_future_revenue:,.2f}")
-col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}")
-col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}")
+col_m2.metric(label="Total Annual Company Expenses", value=f"₹{total_annual_company_expenses:,.2f}", delta=f"{pct_expenses:.1f}% of Rev", delta_color="inverse")
+col_m3.metric(label="What Company Owes as Corporate Tax", value=f"₹{total_corporate_tax:,.2f}", delta=f"{pct_tax:.1f}% of Rev", delta_color="inverse")
+col_m4.metric(label="Company Profits After Corporate Tax", value=f"₹{profit_after_corporate_tax:,.2f}", delta=f"{pct_retained:.1f}% of Rev", delta_color="normal")
+col_m5.metric(label="Total Overhead Portion", value=f"₹{total_annual_overhead:,.2f}")
 
+# Track B: Parallel Zero-Tax Simulation Totals & Percentages
 grand_annual_tax_free_personal_cash = float(df_engine["Total Tax-Free Personal Cash Flow"].sum())
 total_base_tds = float(df_engine["Salary TDS (To Remit)"].sum())
 total_surplus_tds = float(df_engine["Surplus TDS"].sum())
 grand_total_personal_tds_remittance = total_base_tds + total_surplus_tds
 
+# Percentage calculations for Track B
+pct_sim_overhead = (total_annual_overhead / total_12_month_actual) * 100
+pct_sim_tds = (grand_total_personal_tds_remittance / total_12_month_actual) * 100
+pct_sim_personal = (grand_annual_tax_free_personal_cash / total_12_month_actual) * 100
+
 st.write("---")
 st.markdown("#### ⚡ Parallel Scenario Strategy: *Zero-Tax Salary Surplus Optimization*")
 
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta="-100% Tax Drop", delta_color="inverse")
-col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}")
-col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}")
-col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="Fully Extracted", delta_color="normal")
+col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta=f"{pct_sim_overhead:.1f}% Overhead Core", delta_color="off")
+col_s2.metric(label="Grand Total Personal TDS To Remit", value=f"₹{grand_total_personal_tds_remittance:,.2f}", delta=f"{pct_sim_tds:.1f}% of Rev", delta_color="inverse")
+col_s3.metric(label="Total Annual Tax-Free Payout", value=f"₹{grand_annual_tax_free_personal_cash:,.2f}", delta=f"{pct_sim_personal:.1f}% Clear Net", delta_color="normal")
+col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="100% Tax Flattened", delta_color="normal")
 
 st.write("---")
 
@@ -271,8 +288,16 @@ with tab_corp:
     preview_df = df_engine[[
         "Month", "Status", "Gross Revenue", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Projected Overhead",
         "Net Corporate Profit", "Corporate Tax Liability"
-    ]]
-    st.dataframe(preview_df, use_container_width=True)
+    ]].copy()
+    
+    # Generate corporate total rows safely
+    corp_cols = ["Gross Revenue", "Company Salary Expense (Gross)", "Salary TDS (To Remit)", "Projected Overhead", "Net Corporate Profit", "Corporate Tax Liability"]
+    corp_totals = {col: float(preview_df[col].sum()) for col in corp_cols}
+    corp_totals["Month"] = "📈 TOTALS"
+    corp_totals["Status"] = "Full Financial Year Summary"
+    
+    preview_df_with_total = pd.concat([preview_df, pd.DataFrame([corp_totals])], ignore_index=True)
+    st.dataframe(preview_df_with_total, use_container_width=True)
 
 with tab_personal:
     st.markdown("##### 100% Tax-Free Cash-Flow Inflow Ledger hitting your Personal Account")
@@ -293,16 +318,10 @@ with tab_personal:
         "Total Tax-Free Personal Cash Flow": "Net Take-Home (Salary + Surplus)"
     })
     
-    # Safe isolation list of columns to total up
     target_cols = ["Gross Salary", "TDS on Gross Salary", "Base Salary (After TDS)", "Gross Surplus", "Surplus TDS", "Surplus (After TDS)", "Net Take-Home (Salary + Surplus)"]
-    
-    # Explicitly compile sums as floats to prevent concatenation object alignment issues
     totals_row = {col: float(personal_df[col].sum()) for col in target_cols}
     totals_row["Month"] = "📈 TOTALS"
     totals_row["Status"] = "Full Financial Year Summary"
     
-    # Bind cleanly inside a dummy frame and append
-    df_summary_row = pd.DataFrame([totals_row])
-    personal_df_with_total = pd.concat([personal_df, df_summary_row], ignore_index=True)
-    
+    personal_df_with_total = pd.concat([personal_df, pd.DataFrame([totals_row])], ignore_index=True)
     st.dataframe(personal_df_with_total, use_container_width=True)
