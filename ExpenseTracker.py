@@ -51,17 +51,15 @@ def format_indian_currency(val):
         return f"₹{val}"
 
 # ==========================================
-# DATA CORE CORE STORAGE METHODS (CSV)
+# DATA STORAGE METHODS (CSV)
 # ==========================================
 def load_expense_data():
     if not os.path.exists(CSV_FILE):
-        # Create default empty dataframe with strict unique ID tracking indexing
         df = pd.DataFrame(columns=["Log ID", "Date", "Expense Name", "Category", "Amount (₹)", "Payment Mode"])
         df.to_csv(CSV_FILE, index=False)
         return df
     try:
         df = pd.read_csv(CSV_FILE)
-        # Ensure log ID is string to prevent drop alignment bugs
         df["Log ID"] = df["Log ID"].astype(str)
         return df
     except Exception:
@@ -70,7 +68,7 @@ def load_expense_data():
 def save_all_data(df):
     df.to_csv(CSV_FILE, index=False)
 
-# Initial load into active state session memory
+# Initialize session state tracking
 if "expense_df" not in st.session_state:
     st.session_state.expense_df = load_expense_data()
 
@@ -92,13 +90,12 @@ with col_left:
         exp_amt = st.number_input("Amount (INR):", min_value=0.0, step=500.0)
         exp_mode = st.selectbox("Payment Channel:", options=["Corporate Credit Card", "Net Banking Transfer", "Director Wallet Reimbursement", "Petty Cash"])
         
-        submit_btn = st.form_submit_submit = st.form_submit_button("Lock Entry into CSV Ledger")
+        submit_btn = st.form_submit_button("Lock Entry into CSV Ledger")
         
         if submit_btn:
             if exp_name.strip() == "" or exp_amt <= 0:
                 st.error("⚠️ Failed to log entry. Please provide a valid vendor name and amount.")
             else:
-                # Build unique timestamped key identifier to allow safe future edits
                 unique_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
                 new_row = pd.DataFrame([{
                     "Log ID": str(unique_id),
@@ -127,7 +124,6 @@ with col_right:
         total_sum = current_ledger["Amount (₹)"].sum()
         st.metric(label="Total Logged Run Rate Costs", value=format_indian_currency(total_sum))
         
-        # Group metrics to plot clean pie slice ratios
         chart_df = current_ledger.groupby("Category")["Amount (₹)"].sum().reset_index()
         
         fig = px.pie(
@@ -151,7 +147,6 @@ st.subheader("📜 Master Expense Ledger Audit & Correction Vault")
 if st.session_state.expense_df.empty:
     st.caption("Permanent CSV database is currently pristine and empty.")
 else:
-    # Render viewable grid with user-friendly Indian currency strings for review
     display_df = st.session_state.expense_df.copy()
     display_df["Formatted Amount"] = display_df["Amount (₹)"].apply(format_indian_currency)
     
@@ -160,16 +155,13 @@ else:
         use_container_width=True
     )
     
-    # Correction Control Suite Block
     st.markdown("#### 🛠️ Entry Modification & Deletion Console")
     st.caption("Select a transaction title below to modify its records or purge it from the underlying CSV database:")
     
-    # Form selection dict mapping title and ID
     id_options = {row["Log ID"]: f"{row['Date']} | {row['Expense Name']} ({format_indian_currency(row['Amount (₹)'])})" for _, row in st.session_state.expense_df.iterrows()}
     
     selected_id = st.selectbox("Choose entry to alter:", options=list(id_options.keys()), format_func=lambda x: id_options[x])
     
-    # Fetch existing row parameters to fill up edit baseline state data fields
     target_row = st.session_state.expense_df[st.session_state.expense_df["Log ID"] == selected_id].iloc[0]
     
     col_e1, col_e2 = st.columns(2)
@@ -184,7 +176,6 @@ else:
     
     with col_b1:
         if st.button("💾 Save Modifications", type="primary"):
-            # Update values in core tracking dataframe matrix row
             idx = st.session_state.expense_df[st.session_state.expense_df["Log ID"] == selected_id].index[0]
             st.session_state.expense_df.at[idx, "Expense Name"] = edit_name
             st.session_state.expense_df.at[idx, "Category"] = edit_cat
@@ -197,7 +188,6 @@ else:
             
     with col_b2:
         if st.button("🗑️ Purge Entry Entirely"):
-            # Strip row entirely out from dataframe
             st.session_state.expense_df = st.session_state.expense_df[st.session_state.expense_df["Log ID"] != selected_id]
             save_all_data(st.session_state.expense_df)
             st.warning("🗑️ Entry permanently expunged from database records.")
