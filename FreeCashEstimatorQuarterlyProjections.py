@@ -248,15 +248,23 @@ with col_w2:
     st.subheader("👤 Live Personal Wallet Sync")
     st.info(f"### Current Month Tax-Free Cash: **{format_indian_currency(current_month_personal_cash)}**")
 
+with st.expander("🔍 Operational Breakdown"):
+    st.write(f"**Step 1. Starting Gross Revenue ({current_month}):** {format_indian_currency(current_active_revenue)}")
+    st.write(f"💼 *Step 2. Deduct Salary Gross-Up Info:* Target payout of {format_indian_currency(current_net_target)} + Company TDS reservation of {format_indian_currency(current_monthly_tds)} = Total Gross Expense of **-{format_indian_currency(current_gross_salary)}**")
+    st.write(f"🛠️ *Step 3. Deduct Overhead Expenses:* -{format_indian_currency(current_active_overhead)}")
+    st.write(f"➡️ **Calculated Bank Balance (Liquid Leftover):** **{format_indian_currency(calculated_bank_balance)}**")
+    st.write(f"⚠️ *Step 4. Isolate Corporate Tax Liability (25% of profit):* -{format_indian_currency(current_month_tax_liability)}")
+    st.write("---")
+    st.write(f"🏁 **Net Discovered Spendable Capital (Freely Withdrawable Cash):** **{format_indian_currency(freely_withdrawable_cash)}**")
+
 st.write("---")
 
 # ==========================================
-# 7. NEW SECTION: QUARTERLY ADVANCE TAX RESERVE TABLE
+# 7. QUARTERLY ADVANCE TAX RESERVE TABLE
 # ==========================================
 st.subheader("📆 Corporate Quarterly Advance Tax Estimation Schedule")
 st.write("Tracks your cumulative tax legal requirements dynamically based on your current selection phase.")
 
-# Determine quarter order index for locking rules
 q_order = ["Q1", "Q2", "Q3", "Q4"]
 curr_q_idx = q_order.index(current_quarter)
 
@@ -265,7 +273,6 @@ total_predicted_annual_tax = float(df_engine["Corporate Tax Liability"].sum())
 quarterly_schedule_data = []
 cumulative_paid_tracker = 0.0
 
-# Schedule layout criteria
 advance_tax_rules = {
     "Q1": {"target_pct": 15, "deadline": "June 15"},
     "Q2": {"target_pct": 45, "deadline": "September 15"},
@@ -274,12 +281,10 @@ advance_tax_rules = {
 }
 
 for q_idx, q_name in enumerate(q_order):
-    # Calculate revenue generated strictly inside this quarter
     q_rev = float(df_engine[df_engine["Quarter"] == q_name]["Gross Revenue"].sum())
     q_profit = float(df_engine[df_engine["Quarter"] == q_name]["Net Corporate Profit"].sum())
     q_tax_generated = float(df_engine[df_engine["Quarter"] == q_name]["Corporate Tax Liability"].sum())
     
-    # Establish dynamic row phase definitions
     if q_idx < curr_q_idx:
         q_status = "🔒 Locked (Historical Actuals)"
     elif q_idx == curr_q_idx:
@@ -290,10 +295,7 @@ for q_idx, q_name in enumerate(q_order):
     target_percentage = advance_tax_rules[q_name]["target_pct"]
     deadline_date = advance_tax_rules[q_name]["deadline"]
     
-    # Cumulative legally required reservation up to this quarter's deadline
     cumulative_required_reserve = total_predicted_annual_tax * (target_percentage / 100.0)
-    
-    # Outflow slice needed specifically inside this single quarter block
     net_installment_due_this_quarter = max(0.0, cumulative_required_reserve - cumulative_paid_tracker)
     cumulative_paid_tracker = cumulative_required_reserve
     
@@ -311,7 +313,6 @@ for q_idx, q_name in enumerate(q_order):
 
 df_quarterly = pd.DataFrame(quarterly_schedule_data)
 
-# Create copy for clean user rendering format strings
 df_quarterly_render = df_quarterly.copy()
 currency_cols = ["Quarterly Revenue", "Quarterly Net Profit", "Tax Liability Added", "Cumulative Reserve Needed", "Net Installment Outflow Due"]
 for col in currency_cols:
@@ -325,12 +326,19 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
+# FIXED: Safely calculating all summary values from the loaded dataframe
 total_12_month_actual = float(df_engine["Gross Revenue"].sum()) if df_engine["Gross Revenue"].sum() > 0 else 1.0
+total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
+total_full_year_net_profit = float(df_engine["Net Corporate Profit"].sum())
 profit_after_corporate_tax = max(0.0, float(total_full_year_net_profit - total_corporate_tax))
+total_annual_overhead = float(df_engine["Projected Overhead"].sum())
+total_annual_gross_salary = float(df_engine["Company Salary Expense (Gross)"].sum())
+total_baseline_salary_tds = float(df_engine["Salary TDS (To Remit)"].sum())
+
 pct_expenses = ((total_annual_overhead + total_annual_gross_salary) / total_12_month_actual) * 100
 pct_tax = (total_corporate_tax / total_12_month_actual) * 100
 pct_retained = (profit_after_corporate_tax / total_12_month_actual) * 100
-pct_baseline_tds = (float(df_engine["Salary TDS (To Remit)"].sum()) / total_12_month_actual) * 100
+pct_baseline_tds = (total_baseline_salary_tds / total_12_month_actual) * 100
 
 st.markdown("#### Baseline Strategy (Current Input Configuration)")
 col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
@@ -338,7 +346,7 @@ col_m1.metric(label="Total Annual Revenue", value=format_indian_currency(total_1
 col_m2.metric(label="Total Annual Company Expenses", value=format_indian_currency(total_annual_overhead + total_annual_gross_salary), delta=f"{pct_expenses:.1f}% of Rev", delta_color="inverse")
 col_m3.metric(label="What Company Owes as Corporate Tax", value=format_indian_currency(total_corporate_tax), delta=f"{pct_tax:.1f}% of Rev", delta_color="inverse")
 col_m4.metric(label="Company Profits After Corporate Tax", value=format_indian_currency(profit_after_corporate_tax), delta=f"{pct_retained:.1f}% of Rev", delta_color="normal")
-col_m5.metric(label="Baseline Salary TDS Remitted", value=format_indian_currency(float(df_engine["Salary TDS (To Remit)"].sum())), delta=f"{pct_baseline_tds:.1f}% of Rev", delta_color="inverse")
+col_m5.metric(label="Baseline Salary TDS Remitted", value=format_indian_currency(total_baseline_salary_tds), delta=f"{pct_baseline_tds:.1f}% of Rev", delta_color="inverse")
 
 st.write("---")
 
