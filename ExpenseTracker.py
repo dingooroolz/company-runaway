@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-import plotly.express as px
 import re
 
 # ==========================================
@@ -112,7 +111,7 @@ with col_left:
                 st.rerun()
 
 # ------------------------------------------
-# RIGHT COLUMN: REAL-TIME PIE BIFURCATION CHART
+# RIGHT COLUMN: REAL-TIME NATIVE BIFURCATION CHART
 # ------------------------------------------
 with col_right:
     st.subheader("📊 Live Burn-Rate Bifurcation")
@@ -124,18 +123,11 @@ with col_right:
         total_sum = current_ledger["Amount (₹)"].sum()
         st.metric(label="Total Logged Run Rate Costs", value=format_indian_currency(total_sum))
         
-        chart_df = current_ledger.groupby("Category")["Amount (₹)"].sum().reset_index()
+        # Format metrics cleanly for native streamlit charting
+        chart_df = current_ledger.groupby("Category")["Amount (₹)"].sum()
         
-        fig = px.pie(
-            chart_df, 
-            values="Amount (₹)", 
-            names="Category", 
-            hole=0.4,
-            color_discrete_sequence=px.colors.sequential.RdBu
-        )
-        fig.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10), height=300)
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
+        # Renders a sleek vertical allocation tracking bar chart natively
+        st.bar_chart(chart_df, x_label="Expense Category", y_label="Total Expenditure (₹)")
 
 st.write("---")
 
