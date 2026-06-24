@@ -10,7 +10,7 @@ import re
 st.set_page_config(page_title="Operational Expense Tracker", page_icon="📊", layout="wide")
 
 st.title("📊 Script 3: Autonomous Operational Expense Tracker")
-st.write("Log, edit, and audit company operational overhead on the fly with real-time categorical bifurcation.")
+st.write("Log, edit, and audit company operational overhead on the fly with local state retention and secure export protocols.")
 st.write("---")
 
 CSV_FILE = "company_expenses.csv"
@@ -107,11 +107,11 @@ with col_left:
                 
                 st.session_state.expense_df = pd.concat([st.session_state.expense_df, new_row], ignore_index=True)
                 save_all_data(st.session_state.expense_df)
-                st.success(f"✓ Locked successfully: '{exp_name}' added to permanent storage ledger.")
+                st.success(f"✓ Locked successfully: '{exp_name}' added to temporary storage ledger.")
                 st.rerun()
 
 # ------------------------------------------
-# RIGHT COLUMN: REAL-TIME NATIVE BIFURCATION CHART
+# RIGHT COLUMN: REAL-TIME NATIVE CHART & BACKUP ENGINE
 # ------------------------------------------
 with col_right:
     st.subheader("📊 Live Burn-Rate Bifurcation")
@@ -123,11 +123,24 @@ with col_right:
         total_sum = current_ledger["Amount (₹)"].sum()
         st.metric(label="Total Logged Run Rate Costs", value=format_indian_currency(total_sum))
         
-        # Format metrics cleanly for native streamlit charting
         chart_df = current_ledger.groupby("Category")["Amount (₹)"].sum()
-        
-        # Renders a sleek vertical allocation tracking bar chart natively
         st.bar_chart(chart_df, x_label="Expense Category", y_label="Total Expenditure (₹)")
+        
+        # NEW TOOL: Secure Data Extraction Port
+        st.write("---")
+        st.markdown("#### 💾 Secure Data Extraction Port")
+        st.caption("Extract the absolute latest state database out of the temporary cloud space straight onto your phone or computer hard storage:")
+        
+        # Convert memory tracking frame into string data bytes for raw transfer download
+        csv_download_bytes = current_ledger.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label="📥 Download CSV Permanent Backup",
+            data=csv_download_bytes,
+            file_name=f"corporate_expense_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
 st.write("---")
 
