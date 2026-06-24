@@ -42,7 +42,7 @@ if "sim_time_step" not in st.session_state:
     st.session_state.sim_time_step = 1
 
 # ==========================================
-# 2. INTERACTIVE INTERACTION PANEL (SIDEBAR)
+# 2. INTERACTIVE PANEL (SIDEBAR)
 # ==========================================
 st.sidebar.header("🕹️ Simulation Engine Controls")
 st.sidebar.write("Manipulate variables to observe resource-driven deployment velocities.")
