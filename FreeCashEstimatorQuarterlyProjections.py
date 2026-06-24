@@ -8,7 +8,7 @@ import re
 st.set_page_config(page_title="Advance Tax Engine (Script 2)", page_icon="📈", layout="wide")
 
 st.title("💼 Script 2: True Free Cash & Dynamic Quarterly Advance Tax Engine")
-st.write("Calculates real-world baseline liquidity while running progressive quarterly advance tax installment schedules.")
+st.write("Calculates real-world baseline liquidity while running progressive quarterly advance tax installment schedules alongside a parallel zero-tax optimization forecast.")
 st.write("---")
 
 # Define the Indian Financial Year sequence (April to March)
@@ -326,7 +326,7 @@ st.write("---")
 # ==========================================
 st.subheader("📊 Full-Year Fiscal Projections (EOY Estimates)")
 
-# FIXED: Safely calculating all summary values from the loaded dataframe
+# Base Metrics Compilations
 total_12_month_actual = float(df_engine["Gross Revenue"].sum()) if df_engine["Gross Revenue"].sum() > 0 else 1.0
 total_corporate_tax = float(df_engine["Corporate Tax Liability"].sum())
 total_full_year_net_profit = float(df_engine["Net Corporate Profit"].sum())
@@ -335,6 +335,7 @@ total_annual_overhead = float(df_engine["Projected Overhead"].sum())
 total_annual_gross_salary = float(df_engine["Company Salary Expense (Gross)"].sum())
 total_baseline_salary_tds = float(df_engine["Salary TDS (To Remit)"].sum())
 
+# Percentage calculations for Track A
 pct_expenses = ((total_annual_overhead + total_annual_gross_salary) / total_12_month_actual) * 100
 pct_tax = (total_corporate_tax / total_12_month_actual) * 100
 pct_retained = (profit_after_corporate_tax / total_12_month_actual) * 100
@@ -347,6 +348,27 @@ col_m2.metric(label="Total Annual Company Expenses", value=format_indian_currenc
 col_m3.metric(label="What Company Owes as Corporate Tax", value=format_indian_currency(total_corporate_tax), delta=f"{pct_tax:.1f}% of Rev", delta_color="inverse")
 col_m4.metric(label="Company Profits After Corporate Tax", value=format_indian_currency(profit_after_corporate_tax), delta=f"{pct_retained:.1f}% of Rev", delta_color="normal")
 col_m5.metric(label="Baseline Salary TDS Remitted", value=format_indian_currency(total_baseline_salary_tds), delta=f"{pct_baseline_tds:.1f}% of Rev", delta_color="inverse")
+
+# RESTORED ALTERNATE PROJECTIONS FOR PERSONAL ACCOUNT (Track B)
+grand_annual_tax_free_personal_cash = float(df_engine["Total Tax-Free Personal Cash Flow"].sum())
+total_base_tds = float(df_engine["Salary TDS (To Remit)"].sum())
+total_surplus_tds = float(df_engine["Surplus TDS"].sum())
+grand_total_personal_tds_remittance = total_base_tds + total_surplus_tds
+
+# Percentage calculations for Track B Simulation
+pct_sim_overhead = (total_annual_overhead / total_12_month_actual) * 100
+pct_sim_tds = (grand_total_personal_tds_remittance / total_12_month_actual) * 100
+pct_sim_personal = (grand_annual_tax_free_personal_cash / total_12_month_actual) * 100
+
+st.write("---")
+st.markdown("#### ⚡ Parallel Scenario Strategy: *Zero-Tax Salary Surplus Optimization*")
+st.caption("Simulates sweeping 100% of residual company cash out as a director salary bonus across all months to force company taxable income down to zero.")
+
+col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+col_s1.metric(label="Simulated Corporate Tax Due", value="₹0.00", delta=f"{pct_sim_overhead:.1f}% Overhead Core", delta_color="off")
+col_s2.metric(label="Grand Total Personal TDS To Remit", value=format_indian_currency(grand_total_personal_tds_remittance), delta=f"{pct_sim_tds:.1f}% of Rev", delta_color="inverse")
+col_s3.metric(label="Total Annual Tax-Free Payout", value=format_indian_currency(grand_annual_tax_free_personal_cash), delta=f"{pct_sim_personal:.1f}% Clear Net", delta_color="normal")
+col_s4.metric(label="Remaining Left Inside Company", value="₹0.00", delta="100% Tax Flattened", delta_color="normal")
 
 st.write("---")
 
