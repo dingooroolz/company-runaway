@@ -7,8 +7,8 @@ import re
 # ==========================================
 st.set_page_config(page_title="Corporate & Personal Wealth Engine", page_icon="💰", layout="wide")
 
-st.title("💰 Script 5: Corporate Drain & Dual-Source Personal Wealth Engine")
-st.write("Optimizes maximum corporate extraction while separating historic YTD drawings into Remuneration vs. Dividends for exact tax slab compliance.")
+st.title("💰 Script 5: Corporate Drain & Personal Wealth Engine")
+st.write("Drains corporate funds efficiently while isolating your personal savings, dynamic slab liabilities, and safely disposable income.")
 st.write("---")
 
 # ==========================================
@@ -75,42 +75,38 @@ overhead_projected = st.sidebar.number_input("Expected Remaining Overhead:", min
 
 st.sidebar.write("---")
 st.sidebar.subheader("👤 Historical YTD Inflows & Bifurcation")
-rem_ytd = st.sidebar.number_input("Total Historic Cash Inflows Received YTD Net:", min_value=0.0, value=700000.0, step=50000.0,
-                                 help="Total cash that flowed from your company to your personal account since April 1st.")
-
-# --- NEW DYNAMIC BIFURCATION SLIDER ---
-rem_split_pct = st.sidebar.slider("What % of this YTD historic cash was Director Remuneration?", min_value=0.0, max_value=100.0, value=100.0, step=5.0,
-                                  help="The remaining % will automatically be calculated and treated as pre-taxed corporate dividends.")
-
+rem_ytd = st.sidebar.number_input("Total Historic Cash Inflows Received YTD Net:", min_value=0.0, value=700000.0, step=50000.0)
+rem_split_pct = st.sidebar.slider("What % of this YTD historic cash was Director Remuneration?", min_value=0.0, max_value=100.0, value=100.0, step=5.0)
 rem_future = st.sidebar.number_input("Projected Future Remuneration (Rest of Year):", min_value=0.0, value=0.0, step=50000.0)
 
 st.sidebar.write("---")
 st.sidebar.subheader("🏦 Personal Savings Vault Inputs")
-savings_initial = st.sidebar.number_input("Starting Personal Savings Balance (Before Payouts):", min_value=0.0, value=500000.0, step=50000.0)
+savings_initial = st.sidebar.number_input("1. Current Savings Balance (Baseline):", min_value=0.0, value=500000.0, step=50000.0,
+                                         help="Your core starting personal savings balance before fresh monthly extractions hit.")
+# --- UPGRADED ADVANCE TAX CONTROL FIELD ---
+advance_tax_paid = st.sidebar.number_input("2. Advance Taxes Paid Directly So Far (YTD):", min_value=0.0, value=0.0, step=10000.0,
+                                           help="Personal tax payments made out of your pocket. Directly offsets liabilities to release disposable income.")
 
 st.sidebar.write("---")
-st.sidebar.subheader("🏛️ Tax Credits & Arrears")
-advance_tax_paid = st.sidebar.number_input("Advance Taxes Paid So Far (YTD):", min_value=0.0, value=0.0, step=10000.0)
+st.sidebar.subheader("🏛️ Corporate Tax Settings")
 past_tax_arrears = st.sidebar.number_input("Pending Tax Arrears from Previous Years:", min_value=0.0, value=0.0, step=5000.0)
 base_tds_rate = st.sidebar.slider("Standard Transactional TDS Rate (%)", min_value=0.0, max_value=30.0, value=10.0, step=1.0) / 100.0
 
 # ==========================================
 # 3. MATHEMATICAL COMPUTATION MATRICES
 # ==========================================
-# Process the YTD split from user inputs
+# 1. Process YTD Split Details
 ytd_remuneration_net = rem_ytd * (rem_split_pct / 100.0)
 ytd_dividends_net = rem_ytd * (1.0 - (rem_split_pct / 100.0))
 
-# Convert net values back to gross figures to find true tax exposure
-# Remuneration is subject to standard base TDS withholding rules
+# Gross up variables to map to standard regime brackets
 assumed_ytd_rem_gross = ytd_remuneration_net / (1.0 - base_tds_rate) if base_tds_rate < 1.0 else ytd_remuneration_net
 assumed_ytd_rem_tds = assumed_ytd_rem_gross - ytd_remuneration_net
 
-# Dividends are also hit with a standard 10% statutory TDS under Section 194
 assumed_ytd_div_gross = ytd_dividends_net / 0.90
 assumed_ytd_div_tds = assumed_ytd_div_gross - ytd_dividends_net
 
-# Corporate Operations Logic
+# 2. Corporate Account Optimization Logic
 total_monthly_revenue = rev_received + rev_expected
 total_month_overhead = overhead_incurred + overhead_projected
 free_floating_operating_cash = total_monthly_revenue - total_month_overhead
@@ -122,17 +118,16 @@ if cash_available_for_remuneration_pool <= 0:
     calculated_immediate_tds = 0.0
     annual_tax_liability = 0.0
     total_projected_annual_gross = 0.0
-    uncovered_tax_shortfall = 0.0
 else:
     max_safe_gross_remuneration = cash_available_for_remuneration_pool
     base_net_takehome = max_safe_gross_remuneration * (1.0 - base_tds_rate)
     calculated_immediate_tds = max_safe_gross_remuneration - base_net_takehome
 
-    # Absolute Total Personal Gross Income (Remuneration + Dividends stacked sequentially)
+    # Full Annual Personal Income Model
     total_projected_annual_gross = (assumed_ytd_rem_gross + max_safe_gross_remuneration + rem_future) + assumed_ytd_div_gross
     annual_tax_liability = calculate_personal_tax(total_projected_annual_gross)
     
-    # Sum up all tax credits already collected by the tax portal
+    # Calculate slab deficit adjustment check
     total_tax_credits_cleared = advance_tax_paid + assumed_ytd_rem_tds + assumed_ytd_div_tds + calculated_immediate_tds
     uncovered_tax_shortfall = (annual_tax_liability + past_tax_arrears) - total_tax_credits_cleared
     
@@ -142,16 +137,21 @@ else:
     else:
         max_safe_net_takehome = base_net_takehome
 
-# Personal Savings Tracker updates
-total_drawings_injected = rem_ytd + max_safe_net_takehome
-updated_savings_balance = savings_initial + total_drawings_injected
+# --- USER MANDATED 4-STEP PERSONAL SAVINGS EQUATIONS ---
+# Step 1: Current Balance -> mapping to user control 'savings_initial'
+# Step 2: New Influx -> mapping to optimized monthly take-home 'max_safe_net_takehome'
+# Step 3: Combined Total Balance
+combined_total_savings = savings_initial + max_safe_net_takehome
 
-# Calculate personal tax outstanding balances
-outstanding_personal_tax_due = max(0.0, annual_tax_liability + past_tax_arrears - (advance_tax_paid + assumed_ytd_rem_tds + assumed_ytd_div_tds + calculated_immediate_tds))
-reserve_disposable_income = updated_savings_balance - outstanding_personal_tax_due
+# Step 4: Net outstanding liability remaining after subtracting advance taxes and withheld TDS
+net_withheld_credits = advance_tax_paid + assumed_ytd_rem_tds + assumed_ytd_div_tds + calculated_immediate_tds
+outstanding_personal_tax_due = max(0.0, (annual_tax_liability + past_tax_arrears) - net_withheld_credits)
+
+# Final Deduction: Subtracting outstanding liability directly out of the combined balance pool
+safely_disposable_income = combined_total_savings - outstanding_personal_tax_due
 
 # ==========================================
-# 4. SIDE-BY-SIDE MOBILE LAYOUT RENDER
+# 4. SIDE-BY-SIDE LEDGER DISPLAY RENDER
 # ==========================================
 col_corp, col_pers = st.columns(2)
 
@@ -174,24 +174,24 @@ with col_corp:
     st.table(pd.DataFrame(corp_ledger))
 
 # ------------------------------------------
-# RIGHT VIEWPORT: PERSONAL SAVINGS & DISPOSABLE INCOME
+# RIGHT VIEWPORT: PERSONAL SAVINGS ARCHITECTURE
 # ------------------------------------------
 with col_pers:
     st.subheader("🏦 Personal Savings & Tax Asset Ledger")
-    st.write("Real-time accumulation and source tracking:")
+    st.write("Sequential tracking of personal net assets:")
     
-    st.metric(label="💎 True Reserve Disposable Income", value=format_indian_currency(reserve_disposable_income), delta="Clear Fluid Capital")
-    st.metric(label="🏛️ Outstanding Year-End Tax Due", value=format_indian_currency(outstanding_personal_tax_due), delta="Pending Slab Settlement Liability", delta_color="inverse")
+    st.metric(label="💎 Safely Disposable Income", value=format_indian_currency(safely_disposable_income), delta="Protected Fluid Cash")
+    st.metric(label="🏛️ Net Pending Tax Liability", value=format_indian_currency(outstanding_personal_tax_due), delta="Remaining Year-End Balance Due", delta_color="inverse")
     
+    # Render exactly to matching user definitions 1-4
     pers_ledger = [
-        {"Matrix Item": "Initial Savings Baseline", "Value": format_indian_currency(savings_initial)},
-        {"Matrix Item": "Add: YTD Remuneration (Net Portion)", "Value": format_indian_currency(ytd_remuneration_net)},
-        {"Matrix Item": "Add: YTD Dividends (Net Portion)", "Value": format_indian_currency(ytd_dividends_net)},
-        {"Matrix Item": "Add: Current Month Net Influx", "Value": format_indian_currency(max_safe_net_takehome)},
-        {"Matrix Item": "⭐ Updated Savings Account Balance", "Value": format_indian_currency(updated_savings_balance)}
+        {"Sequence Steps": "1. Current Personal Savings Balance", "Value": format_indian_currency(savings_initial), "Context Description": "Core starting savings account balance baseline."},
+        {"Sequence Steps": "2. New Monthly Fund Influx", "Value": format_indian_currency(max_safe_net_takehome), "Context Description": "Fresh post-TDS extraction from corporate clearing engine."},
+        {"Sequence Steps": "3. Total Summation Balance", "Value": format_indian_currency(combined_total_savings), "Context Description": "Aggregated cash pool inside your account right now."},
+        {"Sequence Steps": "4. Net Tax Liability Remaining", "Value": f"- {format_indian_currency(outstanding_personal_tax_due)}", "Context Description": f"Annual Progressive Tax ({format_indian_currency(annual_tax_liability)}) minus YTD credits."}
     ]
     st.table(pd.DataFrame(pers_ledger))
 
 st.write("---")
-st.subheader("🛡️ Source Bifurcation Audit Summary")
-st.markdown(f"Out of your **{format_indian_currency(rem_ytd)}** historic YTD cash withdrawals, the engine has successfully isolated **{format_indian_currency(ytd_remuneration_net)}** as standard corporate remuneration and **{format_indian_currency(ytd_dividends_net)}** as post-tax corporate dividends. This allows the progressive tax calculations to remain perfectly compliant at your true projected annual gross of **{format_indian_currency(total_projected_annual_gross)}**.")
+st.subheader("🛡️ Compliance & Safety Lock Audit")
+st.markdown(f"Your aggregated savings account balance stands at **{format_indian_currency(combined_total_savings)}**. By factoring in your **{format_indian_currency(advance_tax_paid)}** in advance taxes along with YTD withholding credits, your pending tax exposure is reduced down to **{format_indian_currency(outstanding_personal_tax_due)}**. This leaves you with exactly **{format_indian_currency(safely_disposable_income)}** in risk-free spending power.")
