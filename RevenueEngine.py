@@ -8,7 +8,7 @@ import re
 st.set_page_config(page_title="Corporate & Personal Wealth Engine", page_icon="💰", layout="wide")
 
 st.title("💰 Script 5: Corporate Drain & Personal Wealth Engine")
-st.write("Drains corporate funds efficiently while isolating your personal savings, past tax arrears, slab liabilities, and safely disposable income.")
+st.write("Drains corporate funds efficiently while accounting for both corporate and personal advance tax assets alongside dynamic slab calculations.")
 st.write("---")
 
 # ==========================================
@@ -83,12 +83,13 @@ st.sidebar.write("---")
 st.sidebar.subheader("🏦 Personal Savings Vault Inputs")
 savings_initial = st.sidebar.number_input("Current Savings Balance (Baseline):", min_value=0.0, value=500000.0, step=50000.0)
 advance_tax_paid = st.sidebar.number_input("Personal Advance Taxes Paid So Far (YTD):", min_value=0.0, value=0.0, step=10000.0)
-# --- NEW PERSONAL TAX ARREARS FIELD ---
-personal_tax_arrears = st.sidebar.number_input("Personal Tax Arrears from Previous Years:", min_value=0.0, value=0.0, step=5000.0,
-                                               help="Outstanding personal tax debts from prior fiscal cycles requiring clearance out of personal savings.")
+personal_tax_arrears = st.sidebar.number_input("Personal Tax Arrears from Previous Years:", min_value=0.0, value=0.0, step=5000.0)
 
 st.sidebar.write("---")
-st.sidebar.subheader("🏛️ Corporate Settings")
+st.sidebar.subheader("🏛️ Corporate Compliance & Credit Adjustments")
+# --- NEW CORPORATE ADVANCE TAX INPUT FIELD ---
+corp_advance_tax = st.sidebar.number_input("Company Advance Taxes Paid So Far (YTD):", min_value=0.0, value=0.0, step=10000.0,
+                                            help="Taxes the business already deposited. Acts as a corporate credit asset to release current operational cash limits.")
 corp_tax_arrears = st.sidebar.number_input("Company Tax Arrears from Previous Years:", min_value=0.0, value=0.0, step=5000.0)
 base_tds_rate = st.sidebar.slider("Standard Transactional TDS Rate (%)", min_value=0.0, max_value=30.0, value=10.0, step=1.0) / 100.0
 
@@ -106,11 +107,17 @@ assumed_ytd_rem_tds = assumed_ytd_rem_gross - ytd_remuneration_net
 assumed_ytd_div_gross = ytd_dividends_net / 0.90
 assumed_ytd_div_tds = assumed_ytd_div_gross - ytd_dividends_net
 
-# 2. Corporate Account Optimization Logic
+# 2. Corporate Account Optimization Logic (Factoring Corporate Credits)
 total_monthly_revenue = rev_received + rev_expected
 total_month_overhead = overhead_incurred + overhead_projected
 free_floating_operating_cash = total_monthly_revenue - total_month_overhead
-cash_available_for_remuneration_pool = free_floating_operating_cash - corp_tax_arrears
+
+# Net corporate liabilities to clear this month (Arrears offset by corporate advance taxes paid)
+net_corporate_arrears_burden = max(0.0, corp_tax_arrears - corp_advance_tax)
+# Remaining unused corporate tax credits that can be added as a liquid asset bonus
+corporate_tax_credit_bonus = max(0.0, corp_advance_tax - corp_tax_arrears)
+
+cash_available_for_remuneration_pool = free_floating_operating_cash - net_corporate_arrears_burden + corporate_tax_credit_bonus
 
 if cash_available_for_remuneration_pool <= 0:
     max_safe_gross_remuneration = 0.0
@@ -127,7 +134,7 @@ else:
     total_projected_annual_gross = (assumed_ytd_rem_gross + max_safe_gross_remuneration + rem_future) + assumed_ytd_div_gross
     annual_tax_liability = calculate_personal_tax(total_projected_annual_gross)
     
-    # Calculate slab deficit adjustment check
+    # Calculate personal slab deficit adjustment check
     total_tax_credits_cleared = advance_tax_paid + assumed_ytd_rem_tds + assumed_ytd_div_tds + calculated_immediate_tds
     uncovered_tax_shortfall = (annual_tax_liability + personal_tax_arrears) - total_tax_credits_cleared
     
@@ -137,18 +144,12 @@ else:
     else:
         max_safe_net_takehome = base_net_takehome
 
-# --- USER MANDATED 4-STEP PERSONAL SAVINGS EQUATIONS (UPDATED FOR PERSONAL ARREARS) ---
-# Step 1: Current Balance -> mapping to user control 'savings_initial'
-# Step 2: New Influx -> mapping to optimized monthly take-home 'max_safe_net_takehome'
-# Step 3: Combined Total Balance
+# 3. Personal Savings Equations 
 combined_total_savings = savings_initial + max_safe_net_takehome
-
-# Step 4: Total Liabilities calculation (Current Year Slab + Past Personal Arrears)
 total_gross_personal_liabilities = annual_tax_liability + personal_tax_arrears
 net_withheld_credits = advance_tax_paid + assumed_ytd_rem_tds + assumed_ytd_div_tds + calculated_immediate_tds
 outstanding_personal_tax_due = max(0.0, total_gross_personal_liabilities - net_withheld_credits)
 
-# Final Deduction: Subtracting outstanding liability directly out of the combined balance pool
 safely_disposable_income = combined_total_savings - outstanding_personal_tax_due
 
 # ==========================================
@@ -170,6 +171,8 @@ with col_corp:
         {"Matrix Item": "Gross Inflow Focus", "Value": format_indian_currency(total_monthly_revenue)},
         {"Matrix Item": "Deduct: Monthly Overheads", "Value": f"- {format_indian_currency(total_month_overhead)}"},
         {"Matrix Item": "Available Cash Allocation", "Value": format_indian_currency(free_floating_operating_cash)},
+        {"Matrix Item": "Add: Active Corporate Tax Credits", "Value": format_indian_currency(corporate_tax_credit_bonus)},
+        {"Matrix Item": "Deduct: Corporate Arrears (Net)", "Value": f"- {format_indian_currency(net_corporate_arrears_burden)}"},
         {"Matrix Item": "Assigned Gross Remuneration", "Value": format_indian_currency(max_safe_gross_remuneration)}
     ]
     st.table(pd.DataFrame(corp_ledger))
@@ -184,15 +187,14 @@ with col_pers:
     st.metric(label="💎 Safely Disposable Income", value=format_indian_currency(safely_disposable_income), delta="Protected Fluid Cash")
     st.metric(label="🏛️ Net Pending Tax Liability", value=format_indian_currency(outstanding_personal_tax_due), delta="Remaining Total Debt Balance", delta_color="inverse")
     
-    # Render exactly to matching user definitions 1-4
     pers_ledger = [
         {"Sequence Steps": "1. Current Personal Savings Balance", "Value": format_indian_currency(savings_initial), "Context Description": "Core starting savings account balance baseline."},
         {"Sequence Steps": "2. New Monthly Fund Influx", "Value": format_indian_currency(max_safe_net_takehome), "Context Description": "Fresh post-TDS extraction from corporate clearing engine."},
         {"Sequence Steps": "3. Total Summation Balance", "Value": format_indian_currency(combined_total_savings), "Context Description": "Aggregated cash pool inside your account right now."},
-        {"Sequence Steps": "4. Net Tax Liability Remaining", "Value": f"- {format_indian_currency(outstanding_personal_tax_due)}", "Context Description": f"Includes annual slab ({format_indian_currency(annual_tax_liability)}) + past personal arrears ({format_indian_currency(personal_tax_arrears)}) minus credits."}
+        {"Sequence Steps": "4. Net Tax Liability Remaining", "Value": f"- {format_indian_currency(outstanding_personal_tax_due)}", "Context Description": f"Includes annual slab ({format_indian_currency(annual_tax_liability)}) + past personal arrears ({format_indian_cycle(personal_tax_arrears)}) minus credits."}
     ]
     st.table(pd.DataFrame(pers_ledger))
 
 st.write("---")
 st.subheader("🛡️ Compliance & Safety Lock Audit")
-st.markdown(f"Your aggregated savings account balance stands at **{format_indian_currency(combined_total_savings)}**. By factoring in your **{format_indian_currency(advance_tax_paid)}** in advance taxes along with YTD withholding credits, your pending personal tax debt is isolated at **{format_indian_currency(outstanding_personal_tax_due)}**. This leaves you with exactly **{format_indian_currency(safely_disposable_income)}** in risk-free spending power.")
+st.markdown(f"Your corporate ledger has processed **{format_indian_currency(corp_advance_tax)}** in business tax assets to safely maximize your extraction chunk. On the personal dashboard, your aggregated savings balance sits at **{format_indian_currency(combined_total_savings)}** with your personal risk-free spending ceiling fully protected at **{format_indian_currency(safely_disposable_income)}**.")
