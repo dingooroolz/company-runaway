@@ -87,7 +87,6 @@ personal_tax_arrears = st.sidebar.number_input("Personal Tax Arrears from Previo
 
 st.sidebar.write("---")
 st.sidebar.subheader("🏛️ Corporate Compliance & Credit Adjustments")
-# --- NEW CORPORATE ADVANCE TAX INPUT FIELD ---
 corp_advance_tax = st.sidebar.number_input("Company Advance Taxes Paid So Far (YTD):", min_value=0.0, value=0.0, step=10000.0,
                                             help="Taxes the business already deposited. Acts as a corporate credit asset to release current operational cash limits.")
 corp_tax_arrears = st.sidebar.number_input("Company Tax Arrears from Previous Years:", min_value=0.0, value=0.0, step=5000.0)
@@ -191,7 +190,7 @@ with col_pers:
         {"Sequence Steps": "1. Current Personal Savings Balance", "Value": format_indian_currency(savings_initial), "Context Description": "Core starting savings account balance baseline."},
         {"Sequence Steps": "2. New Monthly Fund Influx", "Value": format_indian_currency(max_safe_net_takehome), "Context Description": "Fresh post-TDS extraction from corporate clearing engine."},
         {"Sequence Steps": "3. Total Summation Balance", "Value": format_indian_currency(combined_total_savings), "Context Description": "Aggregated cash pool inside your account right now."},
-        {"Sequence Steps": "4. Net Tax Liability Remaining", "Value": f"- {format_indian_currency(outstanding_personal_tax_due)}", "Context Description": f"Includes annual slab ({format_indian_currency(annual_tax_liability)}) + past personal arrears ({format_indian_cycle(personal_tax_arrears)}) minus credits."}
+        {"Sequence Steps": "4. Net Tax Liability Remaining", "Value": f"- {format_indian_currency(outstanding_personal_tax_due)}", "Context Description": f"Includes annual slab ({format_indian_currency(annual_tax_liability)}) + past personal arrears ({format_indian_currency(personal_tax_arrears)}) minus credits."}
     ]
     st.table(pd.DataFrame(pers_ledger))
 
