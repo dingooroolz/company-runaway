@@ -28,8 +28,8 @@ if not check_password():
 # ==========================================
 st.set_page_config(page_title="Annual Scenario Simulator", page_icon="📊", layout="wide")
 
-st.title("📊 Annual Strategic Scenario Simulator")
-st.write("Imagine full-year revenue/draw scenarios to project your integrated corporate and personal tax positions.")
+st.title("📊 Annual Strategic Scenario Simulator (With Percentage Analytics)")
+st.write("Imagine full-year revenue/draw scenarios to project your integrated corporate and personal tax positions alongside explicit revenue ratio tracking.")
 st.write("---")
 
 # ==========================================
@@ -95,11 +95,11 @@ scen_corp_arrears = st.sidebar.number_input("Legacy Corporate Arrears to Clear (
 
 st.sidebar.write("---")
 st.sidebar.subheader("👤 Imagined Annual Personal Drawings")
-scen_rem_gross = st.sidebar.number_input("Projected Gross Director Remuneration (₹):", min_value=0.0, value=360000.0, step=10000.0)
-scen_bonus_gross = st.sidebar.number_input("Projected Gross Salary Bonuses (₹):", min_value=0.0, value=0.0, step=10000.0)
-scen_div_gross = st.sidebar.number_input("Projected Retained Earnings / Dividends Withdrawal (Gross) (₹):", min_value=0.0, value=0.0, step=10000.0)
-scen_rent_gross = st.sidebar.number_input("Projected Annual Gross House Rent Income (₹):", min_value=0.0, value=0.0, step=10000.0)
-scen_other_gross = st.sidebar.number_input("Projected Income from Other Sources (₹):", min_value=0.0, value=0.0, step=5000.0)
+scen_rem_gross = st.sidebar.number_input("Projected Gross Director Remuneration (₹):", min_value=0.0, value=3600000.0, step=100000.0)
+scen_bonus_gross = st.sidebar.number_input("Projected Gross Salary Bonuses (₹):", min_value=0.0, value=500000.0, step=50000.0)
+scen_div_gross = st.sidebar.number_input("Projected Retained Earnings / Dividends Withdrawal (Gross) (₹):", min_value=0.0, value=400000.0, step=50000.0)
+scen_rent_gross = st.sidebar.number_input("Projected Annual Gross House Rent Income (₹):", min_value=0.0, value=360000.0, step=30000.0)
+scen_other_gross = st.sidebar.number_input("Projected Income from Other Sources (₹):", min_value=0.0, value=100000.0, step=10000.0)
 
 st.sidebar.write("---")
 st.sidebar.subheader("🏦 Personal Safety Controls")
@@ -132,7 +132,8 @@ annual_personal_tax_liability = calculate_personal_tax(total_imagined_personal_g
 imagined_rem_tds = scen_rem_gross * 0.10
 imagined_bonus_tds = scen_bonus_gross * 0.10
 imagined_div_tds = scen_div_gross * 0.10
-total_scenario_credits = imagined_rem_tds + imagined_bonus_tds + imagined_div_tds + scen_pers_advance_tax
+total_corporate_withheld_tds = imagined_rem_tds + imagined_bonus_tds + imagined_div_tds
+total_scenario_credits = total_corporate_withheld_tds + scen_pers_advance_tax
 
 net_personal_tax_shortfall = max(0.0, (annual_personal_tax_liability + scen_pers_arrears) - total_scenario_credits)
 
@@ -147,24 +148,49 @@ final_projected_savings_pool = scen_savings_base + net_payout_injected
 safely_disposable_annual_surplus = final_projected_savings_pool - net_personal_tax_shortfall
 
 # ==========================================
+# PERCENTAGE RATIO ANALYTICS MATH
+# ==========================================
+# Corporate percentage conversions (Base = scen_annual_revenue)
+def get_corp_pct(val):
+    return f"{(val / scen_annual_revenue * 100):.2f}%" if scen_annual_revenue > 0 else "0.00%"
+
+corp_net_profit_pct   = get_corp_pct(net_company_retained_surplus)
+corp_tax_pct         = get_corp_pct(modeled_corporate_tax)
+corp_tds_pct         = get_corp_pct(total_corporate_withheld_tds)
+corp_drawings_pct    = get_corp_pct(total_deductible_drawings)
+
+# Personal percentage conversions (Base = net_payout_injected, total physical money landing in personal accounts)
+def get_pers_pct(val):
+    return f"{(val / net_payout_injected * 100):.2f}%" if net_payout_injected > 0 else "0.00%"
+
+pers_tds_subtracted_pct = get_pers_pct(total_corporate_withheld_tds)
+pers_tax_liability_pct  = get_pers_pct(annual_personal_tax_liability)
+
+# Absolute macro wealth efficiency (Safe cash out vs total corporate turnover)
+overall_extraction_efficiency_pct = f"{(safely_disposable_annual_surplus / scen_annual_revenue * 100):.2f}%" if scen_annual_revenue > 0 else "0.00%"
+
+# ==========================================
 # 4. SIDE-BY-SIDE LEDGER DISPLAY RENDER
 # ==========================================
 col_left, col_right = st.columns(2)
 
+# LEFT VIEWPORT: CORPORATE ANALYTICS
 with col_left:
     st.subheader("🏢 Projected Corporate Scenario Breakdown")
     
-    st.metric(label="📊 Estimated Corporate Tax Owed", value=format_indian_currency(modeled_corporate_tax))
-    st.metric(label="🏛️ Net Company Retained Earnings Surplus", value=format_indian_currency(net_company_retained_surplus))
+    st.metric(label="📊 Estimated Corporate Tax Owed", value=format_indian_currency(modeled_corporate_tax), delta=f"{corp_tax_pct} of Revenue", delta_color="off")
+    st.metric(label="🏛️ Net Company Retained Surplus (Profit)", value=format_indian_currency(net_company_retained_surplus), delta=f"{corp_net_profit_pct} of Revenue", delta_color="off")
     
     corp_matrix = [
-        {"Operational Item": "Imagined Gross Revenue", "Value": format_indian_currency(scen_annual_revenue)},
-        {"Operational Item": "Less: Annual Overheads", "Value": f"- {format_indian_currency(scen_annual_overhead)}"},
-        {"Operational Item": "Less: Deductible Compensation (Remuneration + Bonus)", "Value": f"- {format_indian_currency(total_deductible_drawings)}"},
-        {"Operational Item": "Corporate Taxable Income Base", "Value": format_indian_currency(corporate_taxable_surplus)}
+        {"Operational Item": "Imagined Gross Revenue", "Value": format_indian_currency(scen_annual_revenue), "Ratio (%)": "100.00%"},
+        {"Operational Item": "Less: Annual Overheads", "Value": f"- {format_indian_currency(scen_annual_overhead)}", "Ratio (%)": get_corp_pct(scen_annual_overhead)},
+        {"Operational Item": "Less: Deductible Salaries/Bonuses", "Value": f"- {format_indian_currency(total_deductible_drawings)}", "Ratio (%)": corp_drawings_pct},
+        {"Operational Item": "Mandatory Total Corporate TDS Withheld", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (%)": corp_tds_pct},
+        {"Operational Item": "Corporate Taxable Income Base", "Value": format_indian_currency(corporate_taxable_surplus), "Ratio (%)": get_corp_pct(corporate_taxable_surplus)}
     ]
     st.table(pd.DataFrame(corp_matrix))
 
+# RIGHT VIEWPORT: PERSONAL SAVINGS ANALYTICS
 with col_right:
     st.subheader("🏦 Projected Personal Wealth Matrix")
     
@@ -172,13 +198,24 @@ with col_right:
     st.metric(label="🏛️ Net Remaining Personal Tax Shortfall", value=format_indian_currency(net_personal_tax_shortfall), delta_color="inverse")
     
     pers_matrix = [
-        {"Wealth Item": "Starting Cash Balance Baseline", "Value": format_indian_currency(scen_savings_base)},
-        {"Wealth Item": "Add: Net Income Payout Influx", "Value": format_indian_currency(net_payout_injected)},
-        {"Wealth Item": "Projected Year-End Total Savings Balance", "Value": format_indian_currency(final_projected_savings_pool)},
-        {"Wealth Item": "Less: Outstanding Personal Year-End Tax Shortfall", "Value": f"- {format_indian_currency(net_personal_tax_shortfall)}"}
+        {"Wealth Item": "Starting Cash Balance Baseline", "Value": format_indian_currency(scen_savings_base), "Ratio (% of Cash Influx)": "—"},
+        {"Wealth Item": "Add: Net Income Payout Influx", "Value": format_indian_currency(net_payout_injected), "Ratio (% of Cash Influx)": "100.00%"},
+        {"Wealth Item": "TDS Subtracted from Company", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (% of Cash Influx)": pers_tds_subtracted_pct},
+        {"Wealth Item": "Annual Personal Progressive Tax", "Value": format_indian_currency(annual_personal_tax_liability), "Ratio (% of Cash Influx)": pers_tax_liability_pct},
+        {"Wealth Item": "Projected Year-End Total Savings Balance", "Value": format_indian_currency(final_projected_savings_pool), "Ratio (% of Cash Influx)": "—"}
     ]
     st.table(pd.DataFrame(pers_matrix))
 
+# ==========================================
+# STRATEGIC EFFICIENCY SUMMARY PANEL
+# ==========================================
 st.write("---")
-st.subheader("🛡️ Integrated Scenario Audit Summary")
-st.markdown(f"Under this imagined scenario, your total pooled annual personal gross income hits **{format_indian_currency(total_imagined_personal_gross)}** (factoring in the **{format_indian_currency(taxable_rental_income)}** taxable portion of your house rent). Your baseline annual progressive tax liability is modeled at **{format_indian_currency(annual_personal_tax_liability)}**. After tracking all locked transaction TDS and planned advance taxes, your total personal savings account reaches **{format_indian_currency(final_projected_savings_pool)}**, leaving you with a completely clear, protected wealth threshold of **{format_indian_currency(safely_disposable_annual_surplus)}**.")
+st.subheader("📊 Strategic Wealth Extraction Analytics")
+
+col_eff1, col_eff2 = st.columns(2)
+with col_eff1:
+    st.info(f"💡 **Global Wealth Extraction Efficiency Rating: {overall_extraction_efficiency_pct}**\n\nThis means that after clearing all corporate taxes, setting aside every layer of transactional TDS, and completely clearing your year-end personal progressive slab debt, **{overall_extraction_efficiency_pct}** of your firm's total top-line revenue successfully converts into completely unencumbered, liquid personal net wealth.")
+
+with col_eff2:
+    if corporate_taxable_surplus > 0:
+        st.warning(f"⚡ **Tax Leakage Mitigation Warning:**\n\nYour company is leaving **{format_indian_currency(corporate_taxable_surplus)}** exposed to corporate income tax (~25.17%), costing you **{format_indian_currency(modeled_corporate_tax)}** in tax drift. Consider scaling up your deductible Director Remuneration configuration in the sidebar to suppress this corporate taxable base toward zero.")
