@@ -73,7 +73,7 @@ rev_expected = st.sidebar.number_input("Additional Expected Revenue:", min_value
 overhead_incurred = st.sidebar.number_input("Expenses Already Billed / Paid:", min_value=0.0, value=250000.0, step=10000.0)
 overhead_projected = st.sidebar.number_input("Expected Remaining Overhead:", min_value=0.0, value=124000.0, step=10000.0)
 
-# --- NEW ABSOLUTE ITEMIZATION INPUT FIELDS ---
+# --- HISTORICAL YTD INPUT FIELDS ---
 st.sidebar.write("---")
 st.sidebar.subheader("👤 Historical YTD Absolute Income Matrix")
 st.sidebar.info("Input the exact net amounts received in your personal account since April 1st:")
@@ -104,7 +104,6 @@ base_tds_rate = st.sidebar.slider("Standard Transactional TDS Rate (%)", min_val
 # 3. MATHEMATICAL COMPUTATION MATRICES
 # ==========================================
 # 1. Gross Up Calculations Based on Exact Inputs
-# Remuneration and Bonuses share the standard corporate base TDS filter
 assumed_ytd_rem_gross = ytd_remuneration_net / (1.0 - base_tds_rate) if base_tds_rate < 1.0 else ytd_remuneration_net
 assumed_ytd_rem_tds = assumed_ytd_rem_gross - ytd_remuneration_net
 
@@ -186,9 +185,9 @@ with col_corp:
     
     corp_ledger = [
         {"Matrix Item": "Gross Inflow Focus", "Value": format_indian_currency(total_monthly_revenue)},
-        {"Matrix Item": "Deduct: Monthly Overheads", "Value": f"- {format_indian_currency(total_month_overhead)}"},
+        {"Matrix Item": "Deduct: Monthly Overheads", "Value": format_indian_currency(-total_month_overhead)},
         {"Matrix Item": "Available Cash Allocation", "Value": format_indian_currency(free_floating_operating_cash)},
-        {"Matrix Item": "Deduct: Corporate Arrears (Net)", "Value": f"- {format_indian_currency(net_corporate_arrears_burden)}"},
+        {"Matrix Item": "Deduct: Corporate Arrears (Net)", "Value": format_indian_currency(-net_corporate_arrears_burden)},
         {"Matrix Item": "Assigned Gross Remuneration", "Value": format_indian_currency(max_safe_gross_remuneration)}
     ]
     st.table(pd.DataFrame(corp_ledger))
@@ -204,7 +203,7 @@ with col_pers:
         {"Sequence Steps": "1. Current Personal Savings Balance", "Value": format_indian_currency(savings_initial), "Context Description": "Core starting savings account balance baseline."},
         {"Sequence Steps": "2. New Monthly Fund Influx", "Value": format_indian_currency(max_safe_net_takehome), "Context Description": "Fresh net extraction from corporate clearing engine."},
         {"Sequence Steps": "3. Total Summation Balance", "Value": format_indian_currency(combined_total_savings), "Context Description": "Aggregated cash pool inside your account right now."},
-        {"Sequence Steps": "4. Deduct: Total Current Month Reserves", "Value": f"- {format_indian_currency(current_immediate_tax_reserve)}", "Context Description": f"Includes past arrears ({format_indian_currency(personal_tax_arrears)}) + this month's tax share ({format_indian_currency(amortized_monthly_tax_runway_target)})."}
+        {"Sequence Steps": "4. Deduct: Total Current Month Reserves", "Value": format_indian_currency(-current_immediate_tax_reserve), "Context Description": f"Includes past arrears ({format_indian_currency(personal_tax_arrears)}) + this month's tax share ({format_indian_currency(amortized_monthly_tax_runway_target)})."}
     ]
     st.table(pd.DataFrame(pers_ledger))
 
