@@ -147,6 +147,13 @@ net_payout_injected = (
 final_projected_savings_pool = scen_savings_base + net_payout_injected
 safely_disposable_annual_surplus = final_projected_savings_pool - net_personal_tax_shortfall
 
+# --- NEW METRIC LOGIC: Isolate specific tax impact on Remuneration/Bonus track ---
+# Calculate tax on salary tracks only, then scale proportionally to extract true net take-home
+salary_only_tax = calculate_personal_tax(total_deductible_drawings)
+salary_total_withheld_tds = imagined_rem_tds + imagined_bonus_tds
+true_salary_net_takehome = max(0.0, total_deductible_drawings - salary_only_tax)
+salary_extraction_efficiency_pct = f"{(true_salary_net_takehome / total_deductible_drawings * 100):.2f}%" if total_deductible_drawings > 0 else "0.00%"
+
 # ==========================================
 # PERCENTAGE RATIO ANALYTICS MATH
 # ==========================================
@@ -198,14 +205,14 @@ with col_right:
     st.subheader("🏦 Projected Personal Wealth Matrix")
     
     st.metric(label="💎 True Safe Disposable Annual Surplus", value=format_indian_currency(safely_disposable_annual_surplus), delta=f"{pers_net_surplus_of_influx_pct} of Net Influx Saved", delta_color="normal")
-    st.metric(label="🏛️ Net Remaining Personal Tax Shortfall", value=format_indian_currency(net_personal_tax_shortfall), delta_color="inverse")
+    st.metric(label="💼 True Salary Take-Home Efficiency", value=salary_extraction_efficiency_pct, delta="Net Share of Corporate Salary Awarded", delta_color="normal")
     
     pers_matrix = [
-        {"Wealth Item": "Starting Cash Balance Baseline", "Value": format_indian_currency(scen_savings_base), "Ratio (% of Cash Influx)": "—"},
-        {"Wealth Item": "Add: Net Income Payout Influx (Post-TDS)", "Value": format_indian_currency(net_payout_injected), "Ratio (% of Cash Influx)": "100.00%"},
-        {"Wealth Item": "TDS Subtracted from Company", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (% of Cash Influx)": pers_tds_subtracted_pct},
-        {"Wealth Item": "Annual Personal Progressive Tax Liability", "Value": format_indian_currency(annual_personal_tax_liability), "Ratio (% of Cash Influx)": pers_tax_liability_pct},
-        {"Wealth Item": "Projected Year-End Total Savings (After ALL Taxes)", "Value": format_indian_currency(safely_disposable_annual_surplus), "Ratio (% of Cash Influx)": pers_net_surplus_of_influx_pct}
+        {"Wealth Item": "Starting Cash Balance Baseline", "Value": format_indian_currency(scen_savings_base), "Ratio (%):": "—"},
+        {"Wealth Item": "Add: Net Income Payout Influx (Post-TDS)", "Value": format_indian_currency(net_payout_injected), "Ratio (%):": "100.00%"},
+        {"Wealth Item": "TDS Subtracted from Company", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (%):": pers_tds_subtracted_pct},
+        {"Wealth Item": "Annual Personal Progressive Tax Liability", "Value": format_indian_currency(annual_personal_tax_liability), "Ratio (%):": pers_tax_liability_pct},
+        {"Wealth Item": "Projected Year-End Total Savings (After ALL Taxes)", "Value": format_indian_currency(safely_disposable_annual_surplus), "Ratio (%):": pers_net_surplus_of_influx_pct}
     ]
     st.table(pd.DataFrame(pers_matrix))
 
@@ -220,7 +227,8 @@ with col_eff1:
     st.info(
         f"💡 **Global Wealth Extraction Efficiency Ratings:**\n\n"
         f"*   **Of Corporate Gross Revenue:** **{overall_extraction_efficiency_pct}** of every rupee your firm generated successfully bypasses all tax filters to become risk-free wealth.\n"
-        f"*   **Of Personal Net Influx:** **{pers_net_surplus_of_influx_pct}** of the cash that physically entered your personal accounts is completely protected and cleared for spending."
+        f"*   **Of Personal Net Influx:** **{pers_net_surplus_of_influx_pct}** of the cash that physically entered your personal accounts is completely protected and cleared for spending.\n"
+        f"*   **Of Awarded Gross Salary:** **{salary_extraction_efficiency_pct}** of your total gross remuneration + bonuses makes it completely clean into your post-tax pocket."
     )
 
 with col_eff2:
