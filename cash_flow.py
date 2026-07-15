@@ -147,10 +147,8 @@ net_payout_injected = (
 final_projected_savings_pool = scen_savings_base + net_payout_injected
 safely_disposable_annual_surplus = final_projected_savings_pool - net_personal_tax_shortfall
 
-# --- NEW METRIC LOGIC: Isolate specific tax impact on Remuneration/Bonus track ---
-# Calculate tax on salary tracks only, then scale proportionally to extract true net take-home
+# --- Isolated specific tax impact on Remuneration/Bonus track ---
 salary_only_tax = calculate_personal_tax(total_deductible_drawings)
-salary_total_withheld_tds = imagined_rem_tds + imagined_bonus_tds
 true_salary_net_takehome = max(0.0, total_deductible_drawings - salary_only_tax)
 salary_extraction_efficiency_pct = f"{(true_salary_net_takehome / total_deductible_drawings * 100):.2f}%" if total_deductible_drawings > 0 else "0.00%"
 
@@ -166,15 +164,14 @@ corp_tax_pct         = get_corp_pct(modeled_corporate_tax)
 corp_tds_pct         = get_corp_pct(total_corporate_withheld_tds)
 corp_drawings_pct    = get_corp_pct(total_deductible_drawings)
 
-# Personal percentage conversions (Base = net_payout_injected)
-def get_pers_pct(val):
-    return f"{(val / net_payout_injected * 100):.2f}%" if net_payout_injected > 0 else "0.00%"
+# --- TARGETED UPDATE: Base All Personal Matrix Ratios Off Total Salary Awards (A) ---
+def get_pct_of_salary(val):
+    return f"{(val / total_deductible_drawings * 100):.2f}%" if total_deductible_drawings > 0 else "0.00%"
 
-pers_tds_subtracted_pct = get_pers_pct(total_corporate_withheld_tds)
-pers_tax_liability_pct  = get_pers_pct(annual_personal_tax_liability)
-
-# Share of actual incoming funds that are saved completely clean
-pers_net_surplus_of_influx_pct = f"{(safely_disposable_annual_surplus / net_payout_injected * 100):.2f}%" if net_payout_injected > 0 else "0.00%"
+salary_tds_pct_of_A     = get_pct_of_salary(total_corporate_withheld_tds)
+payout_influx_pct_of_A  = get_pct_of_salary(net_payout_injected)
+personal_tax_pct_of_A   = get_pct_of_salary(annual_personal_tax_liability)
+final_savings_pct_of_A  = get_pct_of_salary(safely_disposable_annual_surplus)
 
 # Absolute macro wealth efficiency (Safe cash out vs total corporate turnover)
 overall_extraction_efficiency_pct = f"{(safely_disposable_annual_surplus / scen_annual_revenue * 100):.2f}%" if scen_annual_revenue > 0 else "0.00%"
@@ -200,19 +197,20 @@ with col_left:
     ]
     st.table(pd.DataFrame(corp_matrix))
 
-# RIGHT VIEWPORT: PERSONAL SAVINGS ANALYTICS
+# RIGHT VIEWPORT: PERSONAL SAVINGS ANALYTICS (HIERARCHY OPTIMIZED)
 with col_right:
     st.subheader("🏦 Projected Personal Wealth Matrix")
     
-    st.metric(label="💎 True Safe Disposable Annual Surplus", value=format_indian_currency(safely_disposable_annual_surplus), delta=f"{pers_net_surplus_of_influx_pct} of Net Influx Saved", delta_color="normal")
-    st.metric(label="💼 True Salary Take-Home Efficiency", value=salary_extraction_efficiency_pct, delta="Net Share of Corporate Salary Awarded", delta_color="normal")
+    st.metric(label="💎 True Safe Disposable Annual Surplus", value=format_indian_currency(safely_disposable_annual_surplus), delta=f"{final_savings_pct_of_A} Net Yield of Salary", delta_color="normal")
+    st.metric(label="💼 True Salary Take-Home Efficiency", value=salary_extraction_efficiency_pct, delta="Baseline Calculation Output", delta_color="normal")
     
     pers_matrix = [
-        {"Wealth Item": "Starting Cash Balance Baseline", "Value": format_indian_currency(scen_savings_base), "Ratio (%):": "—"},
-        {"Wealth Item": "Add: Net Income Payout Influx (Post-TDS)", "Value": format_indian_currency(net_payout_injected), "Ratio (%):": "100.00%"},
-        {"Wealth Item": "TDS Subtracted from Company", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (%):": pers_tds_subtracted_pct},
-        {"Wealth Item": "Annual Personal Progressive Tax Liability", "Value": format_indian_currency(annual_personal_tax_liability), "Ratio (%):": pers_tax_liability_pct},
-        {"Wealth Item": "Projected Year-End Total Savings (After ALL Taxes)", "Value": format_indian_currency(safely_disposable_annual_surplus), "Ratio (%):": pers_net_surplus_of_influx_pct}
+        {"Wealth Item": "A. Total Salary + Bonuses Awarded", "Value": format_indian_currency(total_deductible_drawings), "Ratio (% of Salary Award A)": "100.00%"},
+        {"Wealth Item": "B. TDS Subtracted / Deducted", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (% of Salary Award A)": salary_tds_pct_of_A},
+        {"Wealth Item": "C. Add: Net Income Payout Influx (Post-TDS)", "Value": format_indian_currency(net_payout_injected), "Ratio (% of Salary Award A)": payout_influx_pct_of_A},
+        {"Wealth Item": "D. Advance Taxes Paid Out", "Value": format_indian_currency(scen_pers_advance_tax), "Ratio (% of Salary Award A)": "—"},
+        {"Wealth Item": "E. Annual Personal Progressive Tax Liability", "Value": format_indian_currency(annual_personal_tax_liability), "Ratio (% of Salary Award A)": personal_tax_pct_of_A},
+        {"Wealth Item": "F. Projected Year-End Total Savings (After ALL Taxes)", "Value": format_indian_currency(safely_disposable_annual_surplus), "Ratio (% of Salary Award A)": final_savings_pct_of_A}
     ]
     st.table(pd.DataFrame(pers_matrix))
 
@@ -227,8 +225,7 @@ with col_eff1:
     st.info(
         f"💡 **Global Wealth Extraction Efficiency Ratings:**\n\n"
         f"*   **Of Corporate Gross Revenue:** **{overall_extraction_efficiency_pct}** of every rupee your firm generated successfully bypasses all tax filters to become risk-free wealth.\n"
-        f"*   **Of Personal Net Influx:** **{pers_net_surplus_of_influx_pct}** of the cash that physically entered your personal accounts is completely protected and cleared for spending.\n"
-        f"*   **Of Awarded Gross Salary:** **{salary_extraction_efficiency_pct}** of your total gross remuneration + bonuses makes it completely clean into your post-tax pocket."
+        f"*   **Of Awarded Gross Salary (A):** **{final_savings_pct_of_A}** of your complete base salary package successfully lands in your absolute net liquid savings balance after clearing all statutory dues."
     )
 
 with col_eff2:
