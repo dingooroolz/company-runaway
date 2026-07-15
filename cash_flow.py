@@ -95,35 +95,31 @@ scen_corp_arrears = st.sidebar.number_input("Legacy Corporate Arrears to Clear (
 
 st.sidebar.write("---")
 st.sidebar.subheader("👤 Imagined Annual Personal Drawings")
-scen_rem_gross = st.sidebar.number_input("Projected Gross Director Remuneration (₹):", min_value=0.0, value=3600000.0, step=100000.0)
-scen_bonus_gross = st.sidebar.number_input("Projected Gross Salary Bonuses (₹):", min_value=0.0, value=500000.0, step=50000.0)
-scen_div_gross = st.sidebar.number_input("Projected Retained Earnings / Dividends Withdrawal (Gross) (₹):", min_value=0.0, value=400000.0, step=50000.0)
-scen_rent_gross = st.sidebar.number_input("Projected Annual Gross House Rent Income (₹):", min_value=0.0, value=360000.0, step=30000.0)
-scen_other_gross = st.sidebar.number_input("Projected Income from Other Sources (₹):", min_value=0.0, value=100000.0, step=10000.0)
+scen_rem_gross = st.sidebar.number_input("Projected Gross Director Remuneration (₹):", min_value=0.0, value=360000.0, step=10000.0)
+scen_bonus_gross = st.sidebar.number_input("Projected Gross Salary Bonuses (₹):", min_value=0.0, value=0.0, step=10000.0)
+scen_div_gross = st.sidebar.number_input("Projected Retained Earnings / Dividends Withdrawal (Gross) (₹):", min_value=0.0, value=0.0, step=10000.0)
+scen_rent_gross = st.sidebar.number_input("Projected Annual Gross House Rent Income (₹):", min_value=0.0, value=0.0, step=10000.0)
+scen_other_gross = st.sidebar.number_input("Projected Income from Other Sources (₹):", min_value=0.0, value=0.0, step=5000.0)
 
 st.sidebar.write("---")
 st.sidebar.subheader("🏦 Personal Safety Controls")
-scen_savings_base = st.sidebar.number_input("Baseline Personal Savings Balance (₹):", min_value=0.0, value=1000000.0, step=100000.0)
-scen_pers_advance_tax = st.sidebar.number_input("Planned Personal Advance Tax to Pay (₹):", min_value=0.0, value=150000.0, step=25000.0)
-scen_pers_arrears = st.sidebar.number_input("Personal Tax Arrears from Prior Years (₹):", min_value=0.0, value=0.0, step=10000.0)
+scen_savings_base = st.sidebar.number_input("Baseline Personal Savings Balance (₹):", min_value=0.0, value=500000.0, step=50000.0)
+scen_pers_advance_tax = st.sidebar.number_input("Planned Personal Advance Tax to Pay (₹):", min_value=0.0, value=0.0, step=10000.0)
+scen_pers_arrears = st.sidebar.number_input("Personal Tax Arrears from Prior Years (₹):", min_value=0.0, value=0.0, step=5000.0)
 
 # ==========================================
 # MATHEMATICAL FORECASTING LOGIC ENGINE
 # ==========================================
 # 1. Corporate Scenario Computation
-# Remuneration and bonuses clear out corporate profits as deductible expenses
 total_deductible_drawings = scen_rem_gross + scen_bonus_gross
 corporate_taxable_surplus = max(0.0, scen_annual_revenue - scen_annual_overhead - total_deductible_drawings)
 
-# Corporate tax modeling base rate flat 22% -> scaled up to 25.17% with cess/surcharges
 modeled_corporate_tax = corporate_taxable_surplus * 0.2517
 net_company_retained_surplus = corporate_taxable_surplus - modeled_corporate_tax - scen_corp_arrears
 
 # 2. Personal Scenario Computation
-# House rent receives standard 30% statutory allowance discount automatically
 taxable_rental_income = scen_rent_gross * 0.70
 
-# Total aggregated personal income for progressive slab checks
 total_imagined_personal_gross = (
     scen_rem_gross + 
     scen_bonus_gross + 
@@ -133,15 +129,13 @@ total_imagined_personal_gross = (
 )
 annual_personal_tax_liability = calculate_personal_tax(total_imagined_personal_gross)
 
-# Tracking dynamic transaction tax collection credits
 imagined_rem_tds = scen_rem_gross * 0.10
 imagined_bonus_tds = scen_bonus_gross * 0.10
-imagined_div_tds = scen_div_gross * 0.10  # Section 194 10% Withholding rule
+imagined_div_tds = scen_div_gross * 0.10
 total_scenario_credits = imagined_rem_tds + imagined_bonus_tds + imagined_div_tds + scen_pers_advance_tax
 
 net_personal_tax_shortfall = max(0.0, (annual_personal_tax_liability + scen_pers_arrears) - total_scenario_credits)
 
-# Net personal drawings injected into cash accounts
 net_payout_injected = (
     (scen_rem_gross - imagined_rem_tds) + 
     (scen_bonus_gross - imagined_bonus_tds) + 
@@ -153,7 +147,7 @@ final_projected_savings_pool = scen_savings_base + net_payout_injected
 safely_disposable_annual_surplus = final_projected_savings_pool - net_personal_tax_shortfall
 
 # ==========================================
-# VISUAL DATA DISPLAY RENDER
+# 4. SIDE-BY-SIDE LEDGER DISPLAY RENDER
 # ==========================================
 col_left, col_right = st.columns(2)
 
@@ -174,7 +168,7 @@ with col_left:
 with col_right:
     st.subheader("🏦 Projected Personal Wealth Matrix")
     
-    st.metric(label="💎 Safe Disposable Income Buffer", value=format_indian_currency(safely_disposable_income_annual_surplus))
+    st.metric(label="💎 Safe Disposable Income Buffer", value=format_indian_currency(safely_disposable_annual_surplus))
     st.metric(label="🏛️ Net Remaining Personal Tax Shortfall", value=format_indian_currency(net_personal_tax_shortfall), delta_color="inverse")
     
     pers_matrix = [
@@ -187,4 +181,4 @@ with col_right:
 
 st.write("---")
 st.subheader("🛡️ Integrated Scenario Audit Summary")
-st.markdown(f"Under this imagined scenario, your total pooled annual personal gross income hits **{format_indian_currency(total_imagined_personal_gross)}** (factoring in the **{format_indian_currency(taxable_rental_income)}** taxable portion of your house rent). Your baseline annual progressive tax liability is modeled at **{format_indian_currency(annual_personal_tax_liability)}**. After tracking all locked transaction TDS and planned advance taxes, your total personal savings account reaches **{format_indian_currency(final_projected_savings_pool)}**, leaving you with a completely clear, protected wealth threshold of **{format_indian_currency(safely_disposable_income_annual_surplus)}**.")
+st.markdown(f"Under this imagined scenario, your total pooled annual personal gross income hits **{format_indian_currency(total_imagined_personal_gross)}** (factoring in the **{format_indian_currency(taxable_rental_income)}** taxable portion of your house rent). Your baseline annual progressive tax liability is modeled at **{format_indian_currency(annual_personal_tax_liability)}**. After tracking all locked transaction TDS and planned advance taxes, your total personal savings account reaches **{format_indian_currency(final_projected_savings_pool)}**, leaving you with a completely clear, protected wealth threshold of **{format_indian_currency(safely_disposable_annual_surplus)}**.")
