@@ -10,7 +10,7 @@ def check_password():
         return True
 
     st.title("🔒 Private Financial Access")
-    pwd = st.text_input("Enter the firm's scenario engine access key:", type="password")
+    pwd = st.text_input("Enter the firm's access key:", type="password")
     
     if st.button("Unlock Sandbox Dashboard"):
         if pwd == "MyFirm2026":
@@ -164,7 +164,7 @@ corp_tax_pct         = get_corp_pct(modeled_corporate_tax)
 corp_tds_pct         = get_corp_pct(total_corporate_withheld_tds)
 corp_drawings_pct    = get_corp_pct(total_deductible_drawings)
 
-# --- TARGETED UPDATE: Base All Personal Matrix Ratios Off Total Salary Awards (A) ---
+# Personal matrix calculations benchmarked explicitly to Total Salary Awards (A)
 def get_pct_of_salary(val):
     return f"{(val / total_deductible_drawings * 100):.2f}%" if total_deductible_drawings > 0 else "0.00%"
 
@@ -190,14 +190,14 @@ with col_left:
     
     corp_matrix = [
         {"Operational Item": "Imagined Gross Revenue", "Value": format_indian_currency(scen_annual_revenue), "Ratio (%)": "100.00%"},
-        {"Operational Item": "Less: Annual Overheads", "Value": f"- {format_indian_currency(scen_annual_overhead)}", "Ratio (%)": get_corp_pct(scen_annual_overhead)},
-        {"Operational Item": "Less: Deductible Salaries/Bonuses", "Value": f"- {format_indian_currency(total_deductible_drawings)}", "Ratio (%)": corp_drawings_pct},
+        {"Operational Item": "Less: Annual Overheads", "Value": format_indian_currency(-scen_annual_overhead), "Ratio (%)": get_corp_pct(scen_annual_overhead)},
+        {"Operational Item": "Less: Deductible Salaries/Bonuses", "Value": format_indian_currency(-total_deductible_drawings), "Ratio (%)": corp_drawings_pct},
         {"Operational Item": "Mandatory Total Corporate TDS Withheld", "Value": format_indian_currency(total_corporate_withheld_tds), "Ratio (%)": corp_tds_pct},
         {"Operational Item": "Corporate Taxable Income Base", "Value": format_indian_currency(corporate_taxable_surplus), "Ratio (%)": get_corp_pct(corporate_taxable_surplus)}
     ]
     st.table(pd.DataFrame(corp_matrix))
 
-# RIGHT VIEWPORT: PERSONAL SAVINGS ANALYTICS (HIERARCHY OPTIMIZED)
+# RIGHT VIEWPORT: PERSONAL SAVINGS ANALYTICS
 with col_right:
     st.subheader("🏦 Projected Personal Wealth Matrix")
     
