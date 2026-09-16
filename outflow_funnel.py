@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 from datetime import date
 import os
 
@@ -112,10 +111,10 @@ if not df_expenses.empty:
     m3.metric("Overall Cumulative Outflow", f"₹{overall_total:,.2f}")
 
     # ==========================================
-    # PIE CHART VISUALIZATIONS (REAL-TIME)
+    # NATIVE VISUALIZATIONS (MONTHLY & OVERALL)
     # ==========================================
     st.write("---")
-    st.subheader("🥧 Outflow Bifurcation Pies")
+    st.subheader("📈 Outflow Bifurcation Distribution")
 
     df_viz = df_expenses.copy()
     df_viz["YearMonth"] = pd.to_datetime(df_viz["Date"]).dt.strftime('%B %Y')
@@ -127,40 +126,22 @@ if not df_expenses.empty:
     selected_month = st.selectbox("📅 Select Month to Inspect Bifurcation:", available_months)
     df_selected_month = df_viz[df_viz["YearMonth"] == selected_month]
 
-    col_pie1, col_pie2 = st.columns(2)
+    col_chart1, col_chart2 = st.columns(2)
 
-    with col_pie1:
+    with col_chart1:
         st.markdown(f"**Monthly Bifurcation: {selected_month}**")
         if not df_selected_month.empty:
-            m_grouped = df_selected_month.groupby("Category")["Amount"].sum()
-            fig1, ax1 = plt.subplots(figsize=(6, 6))
-            ax1.pie(
-                m_grouped, 
-                labels=m_grouped.index, 
-                autopct='%1.1f%%', 
-                startangle=140, 
-                wedgeprops=dict(width=0.45, edgecolor='w')
-            )
-            ax1.axis('equal')
-            fig1.patch.set_alpha(0.0)
-            st.pyplot(fig1)
+            m_breakdown = df_selected_month.groupby("Category")["Amount"].sum().reset_index()
+            m_breakdown = m_breakdown.set_index("Category")
+            st.bar_chart(m_breakdown)
         else:
             st.info("No records found for the selected month.")
 
-    with col_pie2:
+    with col_chart2:
         st.markdown("**Overall Cumulative Bifurcation (All-Time)**")
-        o_grouped = df_viz.groupby("Category")["Amount"].sum()
-        fig2, ax2 = plt.subplots(figsize=(6, 6))
-        ax2.pie(
-            o_grouped, 
-            labels=o_grouped.index, 
-            autopct='%1.1f%%', 
-            startangle=140, 
-            wedgeprops=dict(width=0.45, edgecolor='w')
-        )
-        ax2.axis('equal')
-        fig2.patch.set_alpha(0.0)
-        st.pyplot(fig2)
+        o_breakdown = df_viz.groupby("Category")["Amount"].sum().reset_index()
+        o_breakdown = o_breakdown.set_index("Category")
+        st.bar_chart(o_breakdown)
 
     # Tables and Export Tabs
     st.write("---")
