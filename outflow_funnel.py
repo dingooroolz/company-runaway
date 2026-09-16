@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
 from datetime import date
 import os
 
@@ -121,7 +121,6 @@ if not df_expenses.empty:
     df_viz["YearMonth"] = pd.to_datetime(df_viz["Date"]).dt.strftime('%B %Y')
     df_viz["SortPeriod"] = pd.to_datetime(df_viz["Date"]).dt.to_period("M")
 
-    # Generate available months sorted chronologically descending
     available_months_df = df_viz[["YearMonth", "SortPeriod"]].drop_duplicates().sort_values(by="SortPeriod", ascending=False)
     available_months = available_months_df["YearMonth"].tolist()
 
@@ -133,39 +132,35 @@ if not df_expenses.empty:
     with col_pie1:
         st.markdown(f"**Monthly Bifurcation: {selected_month}**")
         if not df_selected_month.empty:
-            fig_month = px.pie(
-                df_selected_month,
-                values="Amount",
-                names="Category",
-                hole=0.4,
-                color_discrete_sequence=px.colors.qualitative.Safe
+            m_grouped = df_selected_month.groupby("Category")["Amount"].sum()
+            fig1, ax1 = plt.subplots(figsize=(6, 6))
+            ax1.pie(
+                m_grouped, 
+                labels=m_grouped.index, 
+                autopct='%1.1f%%', 
+                startangle=140, 
+                wedgeprops=dict(width=0.45, edgecolor='w')
             )
-            fig_month.update_traces(
-                textposition="inside",
-                textinfo="percent+label",
-                hovertemplate="<b>%{label}</b><br>Amount: ₹%{value:,.2f}<br>Share: %{percent}<extra></extra>"
-            )
-            fig_month.update_layout(showlegend=False, margin=dict(t=20, b=20, l=10, r=10))
-            st.plotly_chart(fig_month, use_container_width=True)
+            ax1.axis('equal')
+            fig1.patch.set_alpha(0.0)
+            st.pyplot(fig1)
         else:
             st.info("No records found for the selected month.")
 
     with col_pie2:
         st.markdown("**Overall Cumulative Bifurcation (All-Time)**")
-        fig_overall = px.pie(
-            df_viz,
-            values="Amount",
-            names="Category",
-            hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Prism
+        o_grouped = df_viz.groupby("Category")["Amount"].sum()
+        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        ax2.pie(
+            o_grouped, 
+            labels=o_grouped.index, 
+            autopct='%1.1f%%', 
+            startangle=140, 
+            wedgeprops=dict(width=0.45, edgecolor='w')
         )
-        fig_overall.update_traces(
-            textposition="inside",
-            textinfo="percent+label",
-            hovertemplate="<b>%{label}</b><br>Amount: ₹%{value:,.2f}<br>Share: %{percent}<extra></extra>"
-        )
-        fig_overall.update_layout(showlegend=False, margin=dict(t=20, b=20, l=10, r=10))
-        st.plotly_chart(fig_overall, use_container_width=True)
+        ax2.axis('equal')
+        fig2.patch.set_alpha(0.0)
+        st.pyplot(fig2)
 
     # Tables and Export Tabs
     st.write("---")
